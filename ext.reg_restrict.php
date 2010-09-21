@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v1.0.0
+v1.1.0
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -18,6 +18,7 @@ This extension is compatible with NSM Addon Updater:
 Changelog:
 0.1 - dev
 1.0 - release
+1.1 - added Solspace User module compatibility
 
 =====================================================
 
@@ -59,7 +60,7 @@ class Reg_restrict_ext
 	
 	/**
 	 * -------------------------
-	 * Constructor - DONE
+	 * Constructor 
 	 * -------------------------
 	 *
 	 * @param 	mixed	Settings array or empty string if none exist.
@@ -93,7 +94,7 @@ class Reg_restrict_ext
 	
 	/**
 	 * -------------------------
-	 * Activate Extension - DONE
+	 * Activate Extension 
 	 * -------------------------
 	 *
 	 * This function enters the extension into the exp_extensions table
@@ -105,12 +106,26 @@ class Reg_restrict_ext
 	function activate_extension()
 	{
 		
-		// Register the hook.
+		// hook: EE2 default Member module
 		
 		$hook = array(
 			'class'		=> __CLASS__,
 			'method'	=> 'validate_domain',
 			'hook'		=> 'member_member_register_start',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 2,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);
+		
+		$this->EE->db->insert('extensions', $hook);
+
+		// hook: Solspace User module compatibility
+
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'validate_domain',
+			'hook'		=> 'user_register_start',
 			'settings'	=> serialize($this->settings),
 			'priority'	=> 2,
 			'version'	=> $this->version,
@@ -143,7 +158,7 @@ class Reg_restrict_ext
 	
 	/**
 	 * -------------------------
-	 * Update Extension - DONE
+	 * Update Extension 
 	 * -------------------------
 	 *
 	 * This function performs any necessary db updates when the extension
@@ -160,6 +175,22 @@ class Reg_restrict_ext
 		{
 			return FALSE;
 		}
+		elseif (version_compare($current, '1.1.0', '<'))
+		{
+		
+			// Solspace User module compatibility (added in 1.1.0)
+			$hook = array(
+				'class'		=> __CLASS__,
+				'method'	=> 'validate_domain',
+				'hook'		=> 'user_register_start',
+				'settings'	=> serialize($this->settings),
+				'priority'	=> 2,
+				'version'	=> $this->version,
+				'enabled'	=> 'y'
+			);
+			$this->EE->db->insert('extensions', $hook);		
+		
+		}
 		
 		$this->EE->db->where('class', __CLASS__);
 		$this->EE->db->update(
@@ -173,7 +204,7 @@ class Reg_restrict_ext
 	
 	/**
 	 * -------------------------
-	 * Disable Extension - DONE
+	 * Disable Extension 
 	 * -------------------------
 	 *
 	 * This method removes information from the exp_extensions table
@@ -203,7 +234,7 @@ class Reg_restrict_ext
 
 	/**
 	 * -------------------------
-	 * Settings Form - DONE
+	 * Settings Form 
 	 * -------------------------
 	 *
 	 * @param	Array	Settings
@@ -274,7 +305,7 @@ class Reg_restrict_ext
 
 	/**
 	 * -------------------------
-	 * Save Settings - DONE
+	 * Save Settings 
 	 * -------------------------
 	 *
 	 * This function provides a little extra processing and validation 
@@ -442,7 +473,7 @@ class Reg_restrict_ext
 
 	/**
 	 * -------------------------
-	 * Validate domain - DONE
+	 * Validate domain 
 	 * -------------------------
 	 *
 	 * This method runs before a new member registration is processed and returns an error if the email isn't from an allowed domain.
@@ -452,13 +483,28 @@ class Reg_restrict_ext
 	function validate_domain()
 	{
 		
-		// Get the email address from the $_POST.
+		$match = FALSE ;
+		
+		// First, we try validating the email value from the default EE registration system.
 		
 		$email_address = $this->EE->input->post($this->settings['form_field'], TRUE);
+		
+		$this->debug("email address submitted on EE hook: ".$email_address);
+		
+		// If there is no email value provided, maybe we're using Solspace User and need to check the username field instead.
+		
+		if ($email_address === FALSE && $this->detect_solspace())
+		{
+			
+			// If we Solspace User is casting emails as usernames, we'll use the username field.
 
-		// See if the domain is on the list of allowed domains
-
-		$match = FALSE ;
+			$email_address = $this->EE->input->post('username', TRUE);
+			
+			$this->debug("email address submitted on SOLSPACE hook: ".$email_address);
+		
+		}
+			
+		// Now, we try to find a match in the list of allowed domains.
 		
 		if ($email_address !== FALSE)
 		{
@@ -489,9 +535,10 @@ class Reg_restrict_ext
 				$match = TRUE ;
 			}
 		
-		}		
+		}
 		
-		// If the domain name is invalid, interrupt membership processing and return the error.
+		// If I haven't found a match, the domain name must be invalid.
+		// Interrupt membership processing and return the error.
 		
 		if (!$match)
 		{
@@ -506,7 +553,47 @@ class Reg_restrict_ext
 
 	/**
 	 * -------------------------
-	 * Debug - DONE
+	 * Detect Solspace 
+	 * -------------------------
+	 *
+	 * This method detects whether the Solspace User module is activated
+	 * and casting emails as usernames (for this particualr site).
+	 *
+	 * @return boolean
+	 */
+	function detect_solspace()
+	{
+	
+		$using_email_as_username = FALSE ;
+		
+		if ($this->EE->db->table_exists('user_preferences'))
+		{
+
+			// Check to see if the Solspace User module's "Email is Username" bit is set for this site.
+			$this->EE->db->select('*');
+			$this->EE->db->from('user_preferences');
+			$this->EE->db->where('site_id', $this->EE->config->item('site_id'));
+			$this->EE->db->where('preference_name', 'email_is_username');
+			$this->EE->db->where('preference_value', 'y');
+			
+			if ($this->EE->db->count_all_results() > 0)
+			{
+				$using_email_as_username = TRUE ;
+			}
+					
+		}
+			
+		$this->debug("Solspace detection: ".$using_email_as_username);
+				
+		return $using_email_as_username ;
+		
+	} // END detect_solspace()
+
+
+
+	/**
+	 * -------------------------
+	 * Debug 
 	 * -------------------------
 	 *
 	 * This method places a string into my debug log. For developemnt purposes.
