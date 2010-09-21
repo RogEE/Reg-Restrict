@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v0.1
+v1.0.0
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -17,6 +17,7 @@ This extension is compatible with NSM Addon Updater:
 
 Changelog:
 0.1 - dev
+1.0 - release
 
 =====================================================
 
@@ -459,13 +460,13 @@ class Reg_restrict_ext
 
 		$match = FALSE ;
 		
-		if ($email_domain !== FALSE)
+		if ($email_address !== FALSE)
 		{
 
 			$email_split = explode("@", $email_address, 2);
 			$email_domain = $email_split[1];
 			
-			$this->debug("validating domain: ".$email_address." + ".$email_domain);
+			$this->debug("validating domain: ".$email_address." from ".$email_domain);
 
 			// Load the list of allowed domains
 			
