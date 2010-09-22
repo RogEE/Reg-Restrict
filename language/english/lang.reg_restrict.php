@@ -30,6 +30,8 @@ $lang = array(
 
 'rogee_rr_invalid_domain' => "You must use an email address from one of the allowed domains.",
 
+'rogee_rr_solspace_eau' => "Note: The Solspace User module is active and set to use the \"Email as Username\" feature on this site.",
+
 // END
 ''=>''
 );

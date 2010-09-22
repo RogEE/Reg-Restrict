@@ -33,9 +33,9 @@
 			<enclosure url="http://bitbucket.org/rogee/reg_restrict/get/1.0.zip" type="application/zip" />
 		</item>
 		<item>
-			<title>Version 1.1.0</title>
+			<title>Version 1.1.1</title>
 			<!-- Additional tag required for NSM Addon Updater -->
-			<ee_addon:version>1.1.0</ee_addon:version>
+			<ee_addon:version>1.1.1</ee_addon:version>
 			<link>http://michaelrog.com/ee</link>
 			<pubDate>Tue, 21 September 2010 11:05:00 +0600</pubDate>
 			<description><![CDATA[

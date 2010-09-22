@@ -39,6 +39,8 @@ $this->table->clear() ;
 
 <?=form_close()?>
 
+<? if ($solspace_detected) { ?><p><?=lang('rogee_rr_solspace_eau')?></p><? } ?>
+
 <?php
 
 /* End of file index.php */

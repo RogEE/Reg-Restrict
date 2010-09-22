@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v1.1.0
+v1.1.1
 
 email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -294,6 +294,12 @@ class Reg_restrict_ext
 		);
 		
 		// -------------------------------------------------
+		// detect Solspace User module
+		// -------------------------------------------------
+		
+		$vars['solspace_detected'] = $this->detect_solspace();
+		
+		// -------------------------------------------------
 		// All done. Go go gadget view file!
 		// -------------------------------------------------
 		
@@ -489,8 +495,6 @@ class Reg_restrict_ext
 		
 		$email_address = $this->EE->input->post($this->settings['form_field'], TRUE);
 		
-		$this->debug("email address submitted on EE hook: ".$email_address);
-		
 		// If there is no email value provided, maybe we're using Solspace User and need to check the username field instead.
 		
 		if ($email_address === FALSE && $this->detect_solspace())
@@ -499,8 +503,6 @@ class Reg_restrict_ext
 			// If we Solspace User is casting emails as usernames, we'll use the username field.
 
 			$email_address = $this->EE->input->post('username', TRUE);
-			
-			$this->debug("email address submitted on SOLSPACE hook: ".$email_address);
 		
 		}
 			
