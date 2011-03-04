@@ -216,17 +216,12 @@ class Reg_restrict_ext
 
 			$this->debug( "Updating..." );
 			$this->activate_extension();
-		
-		}
-		
-		if (version_compare($current, '2.0.0', '<'))
-		{
-		
-			// ---------------------------------------------
-			//	Member group assignment and MSM support (added in 2.0.0)
-			// ---------------------------------------------
-
+	
 			$this->EE->load->dbforge();
+			
+			// ---------------------------------------------
+			//	Member group assignment (added in 2.0.0)
+			// ---------------------------------------------
 		
 			if (! $this->EE->db->field_exists('site_id', 'rogee_reg_restrict') )
 			{
@@ -238,6 +233,10 @@ class Reg_restrict_ext
 				$this->debug( "Update: Creating site_id field. (v2.0.0)" );
 	
 			}
+
+			// ---------------------------------------------
+			//	MSM support (added in 2.0.1)
+			// ---------------------------------------------
 			
 			if (! $this->EE->db->field_exists('assigned_group', 'rogee_reg_restrict') )
 			{
@@ -246,7 +245,7 @@ class Reg_restrict_ext
 					'assigned_group' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
 				));
 		
-				$this->debug( "Update: Creating assigned_group field. (v2.0.0)" );
+				$this->debug( "Update: Creating assigned_group field. (v2.0.1)" );
 	
 			}
 		
@@ -332,7 +331,7 @@ class Reg_restrict_ext
 		//	Assemble a full list of domains and associated info.
 		// ---------------------------------------------
 
-		$this->EE->db->where('site_id IN (0, '.$this->EE->config->item('site_id').')');
+		$this->EE->db->where('site_id IN (0, '.$this->EE->config->item('site_id').')')
 				->order_by('domain_entry', 'asc')
 				->get('rogee_reg_restrict');
 		
@@ -377,7 +376,7 @@ class Reg_restrict_ext
 		// detect Solspace User module
 		// -------------------------------------------------
 		
-		$vars['solspace_detected'] = $this->detect_solspace();
+		$vars['solspace_detected'] = $this->_detect_solspace();
 		
 		// -------------------------------------------------
 		// All done. Go go gadget view file!
@@ -577,7 +576,7 @@ class Reg_restrict_ext
 		
 		// If there is no email value provided, maybe we're using Solspace User and need to check the username field instead.
 		
-		if ($email_address === FALSE && $this->detect_solspace())
+		if ($email_address === FALSE && $this->_detect_solspace())
 		{
 			
 			// If the Solspace User is casting emails as usernames, we'll use the username field.
@@ -634,16 +633,17 @@ class Reg_restrict_ext
 
 
 	/**
-	 * -------------------------
+	 * ==============================================
 	 * Detect Solspace 
-	 * -------------------------
+	 * ==============================================
 	 *
 	 * This method detects whether the Solspace User module is activated
 	 * and casting emails as usernames (for this particualr site).
 	 *
-	 * @return boolean
+	 * @access	private
+	 * @return	boolean
 	 */
-	function detect_solspace()
+	private function _detect_solspace()
 	{
 	
 		$using_email_as_username = FALSE ;
@@ -669,20 +669,40 @@ class Reg_restrict_ext
 				
 		return $using_email_as_username ;
 		
-	} // END detect_solspace()
+	} // END _detect_solspace()
 
 
 
 	/**
 	 * -------------------------
-	 * Debug 
+	 * Domain list data 
 	 * -------------------------
 	 *
 	 * This method places a string into my debug log. For developemnt purposes.
 	 *
-	 * @return mixed: parameter (default: blank string)
+	 * @access	private
+	 * @param	boolean: TRUE to include a record for [new] list entry	
+	 * @return 	array: Array containing data for the entries in the domain list
 	 */
-	function debug($debug_statement = "")
+	private function _domain_list_data()
+	{
+	
+	}	 
+
+
+
+	/**
+	 * ==============================================
+	 * Debug 
+	 * ==============================================
+	 *
+	 * This method places a string into my debug log. For developemnt purposes.
+	 *
+	 * @access	private
+	 * @param	string: The debug string
+	 * @return	string: The debug string parameter
+	 */
+	private function debug($debug_statement = "")
 	{
 		
 		if ($this->dev_on)
