@@ -24,7 +24,7 @@ Changelog:
 if (!defined('APP_VER') || !defined('BASEPATH')) { exit('No direct script access allowed'); }
 
 // ---------------------------------------------
-// 	Include config file.
+// 	Include config file
 //	(I get the version from config.php, so everything stays in sync.)
 // ---------------------------------------------
 
@@ -59,6 +59,7 @@ class Reg_restrict_ext
 	private $EE ;
 	
 	private $domain ;
+
 	
 	/**
 	 * ==============================================
@@ -94,6 +95,10 @@ class Reg_restrict_ext
 		{
 			$settings['form_field'] = "email";
 		}
+		if (!isset($settings['require_valid_domain']))
+		{
+			$settings['require_valid_domain'] = "no";
+		}
 		
 		$this->settings = $settings;
 		
@@ -102,7 +107,6 @@ class Reg_restrict_ext
 		// ---------------------------------------------
 		
 		$this->EE->lang->loadfile('reg_restrict');
-		$this->name = $this->EE->lang->line('reg_restrict_module_name');
 		$this->description = $this->EE->lang->line('reg_restrict_module_description');
 	
 	} // END Constructor
@@ -166,7 +170,7 @@ class Reg_restrict_ext
 				'domain_id'    => array('type' => 'INT', 'constraint' => 9, 'unsigned' => TRUE, 'auto_increment' => TRUE),
 				'site_id'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0),
 				'domain_entry'   => array('type' => 'VARCHAR', 'constraint' => 245),
-				'assigned_group'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
+				'destination_group'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
 			));
 			$this->EE->dbforge->add_key('domain_id', TRUE);
 			$this->EE->dbforge->create_table('rogee_reg_restrict');
@@ -192,13 +196,14 @@ class Reg_restrict_ext
 	 * page is visited.
 	 *
 	 * @see	http://expressionengine.com/user_guide/development/extensions.html#enable
-	 * @return	mixed: void on update / false if no update needed
+	 * @return mixed: void on update / false if no update needed
 	 */
-	function update_extension($current = '')
+	function update_extension($current = FALSE)
 	{
 	
-		if ($current == '' OR $current == $this->version)
+		if ($current === FALSE OR $current == $this->version)
 		{
+			$this->debug( "Update: No update needed. Current version: ".$current );
 			return FALSE;
 		}
 		else
@@ -208,7 +213,7 @@ class Reg_restrict_ext
 			//	Un-register all hooks
 			// ---------------------------------------------
 			$this->EE->db->where('class', __CLASS__)
-					->db->delete('extensions');
+					->delete('extensions');
 			
 			// ---------------------------------------------
 			//	Re-register hooks by running activate_extension()
@@ -216,47 +221,34 @@ class Reg_restrict_ext
 
 			$this->debug( "Updating..." );
 			$this->activate_extension();
-	
+
 			$this->EE->load->dbforge();
-			
+
 			// ---------------------------------------------
 			//	Member group assignment (added in 2.0.0)
+			// ---------------------------------------------
+			
+			if (! $this->EE->db->field_exists('destination_group', 'rogee_reg_restrict') )
+			{
+				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
+					'destination_group' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
+				));
+				$this->debug( "Update: Creating destination_group field. (v2.0.0)" );
+			}
+			
+			// ---------------------------------------------
+			//	MSM support (added in 2.0.0)
 			// ---------------------------------------------
 		
 			if (! $this->EE->db->field_exists('site_id', 'rogee_reg_restrict') )
 			{
-			
 				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
 					'site_id' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
 				));
-		
 				$this->debug( "Update: Creating site_id field. (v2.0.0)" );
-	
-			}
-
-			// ---------------------------------------------
-			//	MSM support (added in 2.0.1)
-			// ---------------------------------------------
-			
-			if (! $this->EE->db->field_exists('assigned_group', 'rogee_reg_restrict') )
-			{
-			
-				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
-					'assigned_group' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
-				));
-		
-				$this->debug( "Update: Creating assigned_group field. (v2.0.1)" );
-	
 			}
 		
 		}
-		
-		// ---------------------------------------------
-		//	Update the extensions table
-		// ---------------------------------------------
-		
-		$this->EE->db->where( 'class', __CLASS__ )
-					->update( 'extensions', array('version' => $this->version) );
 					
 		// ---------------------------------------------
 		//	And log.
@@ -314,7 +306,7 @@ class Reg_restrict_ext
 	 * @param	Array	Settings
 	 * @return 	void
 	 */
-	function settings_form($current)
+	function settings_form($current_settings)
 	{
 		
 		$this->EE->load->helper('form');
@@ -326,54 +318,95 @@ class Reg_restrict_ext
 		// ---------------------------------------------
 		
 		$vars = array();
-		
+				
 		// ---------------------------------------------
-		//	Assemble a full list of domains and associated info.
+		//	Data... assemble!!!!
 		// ---------------------------------------------
-
-		$this->EE->db->where('site_id IN (0, '.$this->EE->config->item('site_id').')')
-				->order_by('domain_entry', 'asc')
-				->get('rogee_reg_restrict');
 		
-		$vars['domain_list_data'] = array();
+		$domain_list_data = $this->_domain_list_data();
 		
-		foreach ($query->result_array() as $row)
-		{
-			$vars['domain_list_data'][$row['domain_id']] = array(
-				'domain_id' => $row['domain_id'],
-				'site_id' => $row['site_id'],
-				'domain_entry' => $row['domain_entry'],
-				'assigned_group' => $row['assigned_group']
-			);
-		}
+		$groups_list = $this->_member_groups_list();
+		
+		$sites_list = array(
+			0 => lang('rogee_rr_default_group'), 
+			1 => $this->EE->config->item('site_label')." (".lang('rogee_rr_this_site').")"
+		);
+		
+		$vars['show_multi_site_field'] = ($this->EE->config->item('multiple_sites_enabled') == 'y') ? TRUE : FALSE;
 
 		// ---------------------------------------------
-		//	From the domain list, assemble the settings form fields.
+		//	From the domain list data, assemble the domain list form fields.
 		// ---------------------------------------------
 		
 		$vars['domain_list_fields'] = array();
 		
 		// Generate fields for existing domain list entries...
 		
-		foreach ($vars['domain_list_data'] as $key => $data)
+		foreach ($domain_list_data as $key => $data)
 		{
-						
+
 			$vars['domain_list_fields'][$key] = array(
-				'domain_entry' => form_input('domain_entry_'.$key, $data['domain_entry'])
+				'domain_entry' => form_input(
+					'domain_entry_'.$key,
+					$data['domain_entry']
+					),
+				'destination_group' => form_dropdown(
+					'destination_group_'.$key,
+					$groups_list,
+					$data['destination_group']
+					)
 			);
+			
+			if ($vars['show_multi_site_field'] == 'yes')
+			{
+				$vars['domain_list_fields'][$key]['site_id'] = form_dropdown(
+					'site_id_'.$key,
+					$sites_list, 
+					$data['site_id']
+					);
+			}
+			else
+			{
+				$vars['codes_fields'][$key]['site_id'] = '-'.form_hidden('site_id_'.$key, $data['site_id']);
+			}
 						
 		}
 		
 		// Generate fields for a new domain list entry...
 		
-		$default_entry_value = "";
-					
 		$vars['domain_list_fields']['new'] = array(
-			'domain_entry' => form_input('domain_entry_new', $default_entry_value)
+			'domain_entry' => form_input('domain_entry_new', ''),
+			'destination_group' => form_dropdown('destination_group_new', $groups_list, 0)
 		);
+					
+		if ($vars['show_multi_site_field'] == 'yes')
+		{
+			$vars['domain_list_fields']['new']['site_id'] = form_dropdown('site_id_new', $sites_list, 0);
+		}
+		else
+		{
+			$vars['codes_fields']['new']['site_id'] = $sites_list[1].form_hidden('site_id_new', 0);
+		}
 		
 		// -------------------------------------------------
-		// detect Solspace User module
+		// Also create form fields for the general settings
+		// -------------------------------------------------		
+		
+		$options_yes_no = array(
+			'yes' 	=> lang('yes'), 
+			'no'	=> lang('no')
+		);
+		
+		$vars['general_settings_fields'] = array(
+			'form_field' => form_input('form_field', $this->settings['form_field']),
+			'require_valid_domain' => form_dropdown(
+				'require_valid_domain',
+				$options_yes_no, 
+				$this->settings['require_valid_domain'])
+		);
+
+		// -------------------------------------------------
+		// Detect Solspace User module
 		// -------------------------------------------------
 		
 		$vars['solspace_detected'] = $this->_detect_solspace();
@@ -634,65 +667,6 @@ class Reg_restrict_ext
 
 	/**
 	 * ==============================================
-	 * Detect Solspace 
-	 * ==============================================
-	 *
-	 * This method detects whether the Solspace User module is activated
-	 * and casting emails as usernames (for this particualr site).
-	 *
-	 * @access	private
-	 * @return	boolean
-	 */
-	private function _detect_solspace()
-	{
-	
-		$using_email_as_username = FALSE ;
-		
-		if ($this->EE->db->table_exists('user_preferences'))
-		{
-
-			// Check to see if the Solspace User module's "Email is Username" bit is set for this site.
-			$this->EE->db->select('*');
-			$this->EE->db->from('user_preferences');
-			$this->EE->db->where('site_id', $this->EE->config->item('site_id'));
-			$this->EE->db->where('preference_name', 'email_is_username');
-			$this->EE->db->where('preference_value', 'y');
-			
-			if ($this->EE->db->count_all_results() > 0)
-			{
-				$using_email_as_username = TRUE ;
-			}
-					
-		}
-			
-		$this->debug("Solspace detection: ".$using_email_as_username);
-				
-		return $using_email_as_username ;
-		
-	} // END _detect_solspace()
-
-
-
-	/**
-	 * -------------------------
-	 * Domain list data 
-	 * -------------------------
-	 *
-	 * This method places a string into my debug log. For developemnt purposes.
-	 *
-	 * @access	private
-	 * @param	boolean: TRUE to include a record for [new] list entry	
-	 * @return 	array: Array containing data for the entries in the domain list
-	 */
-	private function _domain_list_data()
-	{
-	
-	}	 
-
-
-
-	/**
-	 * ==============================================
 	 * Debug 
 	 * ==============================================
 	 *
@@ -730,6 +704,122 @@ class Reg_restrict_ext
 		
 	} // END debug()
 	
+	
+	
+	/**
+	 * ==============================================
+	 * Detect Solspace 
+	 * ==============================================
+	 *
+	 * This method detects whether the Solspace User module is activated
+	 * and casting emails as usernames (for this particualr site).
+	 *
+	 * @access	private
+	 * @return	boolean
+	 */
+	private function _detect_solspace()
+	{
+	
+		$using_email_as_username = FALSE ;
+		
+		if ($this->EE->db->table_exists('user_preferences'))
+		{
+	
+			// Check to see if the Solspace User module's "Email is Username" bit is set for this site.
+			$this->EE->db->select('*');
+			$this->EE->db->from('user_preferences');
+			$this->EE->db->where('site_id', $this->EE->config->item('site_id'));
+			$this->EE->db->where('preference_name', 'email_is_username');
+			$this->EE->db->where('preference_value', 'y');
+			
+			if ($this->EE->db->count_all_results() > 0)
+			{
+				$using_email_as_username = TRUE ;
+			}
+					
+		}
+			
+		$this->debug("Solspace detection: ".$using_email_as_username);
+				
+		return $using_email_as_username ;
+		
+	} // END _detect_solspace()
+	
+	
+	
+	/**
+	 * ==============================================
+	 * Domain list data 
+	 * ==============================================
+	 *
+	 * Returns an array of domain list data (for use in constructing the settings form)
+	 *
+	 * @access	private
+	 * @return 	array: Array containing data for the entries in the domain list
+	 */
+	private function _domain_list_data()
+	{
+	
+		$this->EE->db->where('site_id IN (0, '.$this->EE->config->item('site_id').')')
+				->order_by('domain_entry', 'asc');
+		$query = $this->EE->db->get('rogee_reg_restrict');
+		
+		$data = array();
+		
+		foreach ($query->result_array() as $row)
+		{
+			$data[$row['domain_id']] = array(
+				'domain_id' => $row['domain_id'],
+				'site_id' => $row['site_id'],
+				'domain_entry' => $row['domain_entry'],
+				'destination_group' => $row['destination_group']
+			);
+		}
+		
+		return $data ;
+		
+	} // END _domain_list_data()
+	
+	
+	
+	/**
+	 * ==============================================
+	 * Member groups list 
+	 * ==============================================
+	 *
+	 * Returns an array of member groups data (for use in constructing the settings form)
+	 *
+	 * @access	private
+	 * @return 	array: Array containing data for the entries in the domain list
+	 */
+	private function _member_groups_list()
+	{
+	
+		// ---------------------------------------------
+		//	Get group IDs and names from DB
+		// ---------------------------------------------
+		
+		$this->EE->db->select('group_id, site_id, group_title')
+				->where('site_id', $this->EE->config->item('site_id'));
+		$query = $this->EE->db->get('member_groups');
+		
+		// ---------------------------------------------
+		//	Put all the groups into the list.
+		//	("Group 0" represents the default member group.)
+		// ---------------------------------------------	
+		
+		$list = array(0 => lang('rogee_rr_default_group'));
+		
+		foreach ($query->result_array() as $row)
+		{
+			$groups[$row['group_id']] = $row['group_id']." (".$row['group_title'].")";
+		}
+		
+		return $list;
+	
+	} // END _member_groups_list()
+
+
 
 } // END CLASS
 
