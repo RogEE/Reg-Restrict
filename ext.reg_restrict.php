@@ -6,9 +6,9 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v1.1.1
+v2.0.0 (BETA)
 
-email Michael with questions, feedback, suggestions, bugs, etc.
+Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
 >> http://michaelrog.com/ee
 
@@ -16,61 +16,75 @@ This extension is compatible with NSM Addon Updater:
 >> http://expressionengine-addons.com/nsm-addon-updater
 
 Changelog:
-0.1 - dev
-1.0 - release
-1.1 - added Solspace User module compatibility
-
+>> http://bitbucket.org/rogee/reg_restrict/raw/tip/versions.xml
+ 
 =====================================================
-
 */
 
 if (!defined('APP_VER') || !defined('BASEPATH')) { exit('No direct script access allowed'); }
 
-// -----------------------------------------
-//	Here goes nothin...
-// -----------------------------------------
+// ---------------------------------------------
+// 	Include config file.
+//	(I get the version from config.php, so everything stays in sync.)
+// ---------------------------------------------
 
-if (! defined('ROGEE_RR_VERSION'))
-{
-	// get the version from config.php, to ensure that we stay in sync
-	require PATH_THIRD.'reg_restrict/config.php';
-	define('ROGEE_RR_VERSION', $config['version']);
-}
+require_once PATH_THIRD.'reg_restrict/config.php';
+
+// ---------------------------------------------
+//	Okay, here goes nothing...
+// ---------------------------------------------
 
 /**
  * Registration Codes class, for ExpressionEngine 2
  *
- * @package   RogEE Reg Restrict
- * @author    Michael Rog <michael@michaelrog.com>
- * @copyright Copyright (c) 2010 Michael Rog
+ * @package		RogEE Reg Restrict
+ * @author		Michael Rog <michael@michaelrog.com>
+ * @copyright	Copyright (c) 2010 Michael Rog
+ * @link		http://michaelrog.com/ee/reg-restrict
  */
+ 
 class Reg_restrict_ext
 {
 
-	var $settings = array();
-    	
-	var $name = "RogEE Reg Restrict" ;
+	var $name = ROGEE_RR_NAME ;
 	var $version = ROGEE_RR_VERSION ;
+	var $docs_url = ROGEE_RR_DOCS ;
 	var $description = "Restricts registration to a list of allowed domains." ;
-	var $settings_exist = "y" ;
-	var $docs_url = "http//michaelrog.com/ee/reg-restrict" ;
-
-	var $dev_on	= TRUE ;
 	
+	var $settings = array() ;
+    var $settings_exist = "y" ;
+    	
+	private $dev_on	= TRUE ;
+	
+	private $EE ;
+	
+	private $domain ;
 	
 	/**
-	 * -------------------------
-	 * Constructor 
-	 * -------------------------
+	 * ==============================================
+	 * Constructors
+	 * ==============================================
 	 *
-	 * @param 	mixed	Settings array or empty string if none exist.
+	 * @param	mixed	Settings array or FALSE if none exist.
 	 */
-	function reg_restrict_ext($settings='')
+	 
+	function Reg_restrict_ext($settings = FALSE)
 	{
+		$this->__construct($settings);
+	}	 
+	 
+	function __construct($settings = FALSE)
+	{
+	
+		// ---------------------------------------------
+		//	EE instance variable
+		// ---------------------------------------------
 	
 		$this->EE =& get_instance();
 		
-		// default settings
+		// ---------------------------------------------
+		//	Default settings
+		// ---------------------------------------------
 		
 		if (!is_array($settings))
 		{
@@ -83,7 +97,10 @@ class Reg_restrict_ext
 		
 		$this->settings = $settings;
 		
-		// localize
+		// ---------------------------------------------
+		//	Localize
+		// ---------------------------------------------
+		
 		$this->EE->lang->loadfile('reg_restrict');
 		$this->name = $this->EE->lang->line('reg_restrict_module_name');
 		$this->description = $this->EE->lang->line('reg_restrict_module_description');
@@ -93,20 +110,21 @@ class Reg_restrict_ext
 	
 	
 	/**
-	 * -------------------------
+	 * ==============================================
 	 * Activate Extension 
-	 * -------------------------
+	 * ==============================================
 	 *
 	 * This function enters the extension into the exp_extensions table
 	 *
-	 * @see http://expressionengine.com/user_guide/development/extensions.html#enable
-	 *
-	 * @return void
+	 * @see	http://expressionengine.com/user_guide/development/extensions.html#enable
+	 * @return	void
 	 */
 	function activate_extension()
 	{
 		
-		// hook: EE2 default Member module
+		// ---------------------------------------------
+		//	Hook: EE2 default Member module
+		// ---------------------------------------------
 		
 		$hook = array(
 			'class'		=> __CLASS__,
@@ -120,7 +138,9 @@ class Reg_restrict_ext
 		
 		$this->EE->db->insert('extensions', $hook);
 
-		// hook: Solspace User module compatibility
+		// ---------------------------------------------
+		//	Hook: Solspace User module compatibility
+		// ---------------------------------------------
 
 		$hook = array(
 			'class'		=> __CLASS__,
@@ -134,39 +154,45 @@ class Reg_restrict_ext
 		
 		$this->EE->db->insert('extensions', $hook);
 
-		// Create database table.
+		// ---------------------------------------------
+		//	Create database table (if it doens't already exist).
+		// ---------------------------------------------
 		
 		if (! $this->EE->db->table_exists('rogee_reg_restrict'))
 		{
+		
 			$this->EE->load->dbforge();
 			$this->EE->dbforge->add_field(array(
-				'domain_id'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'auto_increment' => TRUE),
-				'domain_entry'   => array('type' => 'VARCHAR', 'constraint' => 100)
+				'domain_id'    => array('type' => 'INT', 'constraint' => 9, 'unsigned' => TRUE, 'auto_increment' => TRUE),
+				'site_id'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0),
+				'domain_entry'   => array('type' => 'VARCHAR', 'constraint' => 245),
+				'assigned_group'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
 			));
-
 			$this->EE->dbforge->add_key('domain_id', TRUE);
-
 			$this->EE->dbforge->create_table('rogee_reg_restrict');
+			
 		}		
 		
-		// log		
-		$this->debug("Reg Restrict extension activated: version ".$this->version);
+		// ---------------------------------------------
+		//	And log.
+		// ---------------------------------------------
+		
+		$this->debug("Activated: ".$this->version);
 		
 	} // END activate_extension()
 	
 	
 	
 	/**
-	 * -------------------------
+	 * ==============================================
 	 * Update Extension 
-	 * -------------------------
+	 * ==============================================
 	 *
-	 * This function performs any necessary db updates when the extension
-	 * page is visited
+	 * This function performs any necessary DB updates when the extension
+	 * page is visited.
 	 *
-	 * @see http://expressionengine.com/user_guide/development/extensions.html#enable
-	 *
-	 * @return 	mixed: void on update / false if none
+	 * @see	http://expressionengine.com/user_guide/development/extensions.html#enable
+	 * @return	mixed: void on update / false if no update needed
 	 */
 	function update_extension($current = '')
 	{
@@ -175,57 +201,106 @@ class Reg_restrict_ext
 		{
 			return FALSE;
 		}
-		elseif (version_compare($current, '1.1.0', '<'))
+		else
 		{
 		
-			// Solspace User module compatibility (added in 1.1.0)
-			$hook = array(
-				'class'		=> __CLASS__,
-				'method'	=> 'validate_domain',
-				'hook'		=> 'user_register_start',
-				'settings'	=> serialize($this->settings),
-				'priority'	=> 2,
-				'version'	=> $this->version,
-				'enabled'	=> 'y'
-			);
-			$this->EE->db->insert('extensions', $hook);		
+			// ---------------------------------------------
+			//	Un-register all hooks
+			// ---------------------------------------------
+			$this->EE->db->where('class', __CLASS__)
+					->db->delete('extensions');
+			
+			// ---------------------------------------------
+			//	Re-register hooks by running activate_extension()
+			// ---------------------------------------------
+
+			$this->debug( "Updating..." );
+			$this->activate_extension();
 		
 		}
 		
-		$this->EE->db->where('class', __CLASS__);
-		$this->EE->db->update(
-					'extensions', 
-					array('version' => $this->version)
-		);
+		if (version_compare($current, '2.0.0', '<'))
+		{
+		
+			// ---------------------------------------------
+			//	Member group assignment and MSM support (added in 2.0.0)
+			// ---------------------------------------------
+
+			$this->EE->load->dbforge();
+		
+			if (! $this->EE->db->field_exists('site_id', 'rogee_reg_restrict') )
+			{
+			
+				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
+					'site_id' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
+				));
+		
+				$this->debug( "Update: Creating site_id field. (v2.0.0)" );
+	
+			}
+			
+			if (! $this->EE->db->field_exists('assigned_group', 'rogee_reg_restrict') )
+			{
+			
+				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
+					'assigned_group' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
+				));
+		
+				$this->debug( "Update: Creating assigned_group field. (v2.0.0)" );
+	
+			}
+		
+		}
+		
+		// ---------------------------------------------
+		//	Update the extensions table
+		// ---------------------------------------------
+		
+		$this->EE->db->where( 'class', __CLASS__ )
+					->update( 'extensions', array('version' => $this->version) );
+					
+		// ---------------------------------------------
+		//	And log.
+		// ---------------------------------------------
+		
+		$this->debug( "Update complete: ".$this->version );
 	
 	} // END update_extension()
 	
 	
 	
 	/**
-	 * -------------------------
+	 * ==============================================
 	 * Disable Extension 
-	 * -------------------------
+	 * ==============================================
 	 *
 	 * This method removes information from the exp_extensions table
 	 *
 	 * @see http://expressionengine.com/user_guide/development/extensions.html#disable
-	 *
 	 * @return void
 	 */
 	function disable_extension()
 	{
 		
-		// un-register hooks
-		$this->EE->db->where('class', __CLASS__);
-		$this->EE->db->delete('extensions');
+		// ---------------------------------------------
+		//	Un-register hooks
+		// ---------------------------------------------
 		
-		// drop the table if it exists
+		$this->EE->db->where('class', __CLASS__)
+				->delete('extensions');
+		
+		// ---------------------------------------------
+		//	Drop the table [if it exists]
+		// ---------------------------------------------
+		
 		$this->EE->load->dbforge();
 		$this->EE->dbforge->drop_table('rogee_reg_restrict');
 		
-		// log
-		$this->debug("Reg Restrict extension disabled.");
+		// ---------------------------------------------
+		//	And log.
+		// ---------------------------------------------
+		
+		$this->debug("Disabled.");
 	
 	} // END disable_extension()
 
@@ -233,9 +308,9 @@ class Reg_restrict_ext
 
 
 	/**
-	 * -------------------------
+	 * ==============================================
 	 * Settings Form 
-	 * -------------------------
+	 * ==============================================
 	 *
 	 * @param	Array	Settings
 	 * @return 	void
@@ -247,16 +322,19 @@ class Reg_restrict_ext
 		$this->EE->load->library('table');
 		$this->EE->load->helper('language');
 		
+		// ---------------------------------------------
+		//	$vars is used to transmit data to the view file, which will be loaded later.
+		// ---------------------------------------------
+		
 		$vars = array();
 		
-		// -------------------------------------------------
-		// domain list values
-		// -------------------------------------------------
+		// ---------------------------------------------
+		//	Assemble a full list of domains and associated info.
+		// ---------------------------------------------
 
-		// Load domains
-		$this->EE->db->select('domain_id, domain_entry');
-		$this->EE->db->order_by('domain_entry', 'asc');
-		$query = $this->EE->db->get('rogee_reg_restrict');
+		$this->EE->db->where('site_id IN (0, '.$this->EE->config->item('site_id').')');
+				->order_by('domain_entry', 'asc')
+				->get('rogee_reg_restrict');
 		
 		$vars['domain_list_data'] = array();
 		
@@ -264,13 +342,15 @@ class Reg_restrict_ext
 		{
 			$vars['domain_list_data'][$row['domain_id']] = array(
 				'domain_id' => $row['domain_id'],
-				'domain_entry' => $row['domain_entry']
+				'site_id' => $row['site_id'],
+				'domain_entry' => $row['domain_entry'],
+				'assigned_group' => $row['assigned_group']
 			);
 		}
 
-		// -------------------------------------------------
-		// domain list form fields
-		// -------------------------------------------------
+		// ---------------------------------------------
+		//	From the domain list, assemble the settings form fields.
+		// ---------------------------------------------
 		
 		$vars['domain_list_fields'] = array();
 		
@@ -500,7 +580,7 @@ class Reg_restrict_ext
 		if ($email_address === FALSE && $this->detect_solspace())
 		{
 			
-			// If we Solspace User is casting emails as usernames, we'll use the username field.
+			// If the Solspace User is casting emails as usernames, we'll use the username field.
 
 			$email_address = $this->EE->input->post('username', TRUE);
 		
@@ -615,7 +695,7 @@ class Reg_restrict_ext
 					'event_id'    => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'auto_increment' => TRUE),
 					'class'    => array('type' => 'VARCHAR', 'constraint' => 50),
 					'event'   => array('type' => 'VARCHAR', 'constraint' => 200),
-					'timestamp'  => array('type' => 'int', 'constraint' => 20, 'unsigned' => TRUE)
+					'timestamp'  => array('type' => 'INT', 'constraint' => 20, 'unsigned' => TRUE)
 				));
 				$this->EE->dbforge->add_key('event_id', TRUE);
 				$this->EE->dbforge->create_table('rogee_debug_log');
