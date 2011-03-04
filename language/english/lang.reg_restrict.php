@@ -17,6 +17,8 @@ $lang = array(
 'rogee_rr_language' => 'RogEE Reg Restrict speaks English!',
 
 'rogee_rr_general_preferences' => 'General preferences',
+'rogee_rr_form_field' => 'Form field',
+'rogee_rr_require_valid_domain' => 'Require valid domain?',
 
 'rogee_rr_domain' => 'Domain',
 'rogee_rr_domains' => 'Domains',

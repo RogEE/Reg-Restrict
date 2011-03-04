@@ -16,7 +16,7 @@ $this->table->set_heading(
 
 foreach ($general_settings_fields as $key => $field)
 {
-	$this->table->add_row(array('data' => lang("rogee_rc_".$key, $key), 'style' => 'width:40%;'), $field);
+	$this->table->add_row(array('data' => lang("rogee_rr_".$key, $key), 'style' => 'width:40%;'), $field);
 }
 
 echo $this->table->generate();
@@ -48,8 +48,8 @@ if (count($domain_list_fields) > 1)
 {
 	$this->table->add_row(
 		array('data' => lang('rogee_rr_instructions_domain_id'), 'style' => 'width:5%;'),
-		array('data' => lang('rogee_rc_instructions_domain_entry'), 'style' => 'width:30%;'),
-		array('data' => lang('rogee_rc_instructions_destination_group'), 'style' => 'width:30%;'),
+		array('data' => lang('rogee_rr_instructions_domain_entry'), 'style' => 'width:30%;'),
+		array('data' => lang('rogee_rr_instructions_destination_group'), 'style' => 'width:30%;'),
 		array('data' => ($show_multi_site_field ? lang('rogee_rr_instructions_msm_enabled') : lang('rogee_rr_instructions_msm_disabled')), 'style' => 'width:35%;')
 	);
 }
