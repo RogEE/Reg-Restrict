@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.0.0 (BETA)
+v2.a.3 (ALPHA)
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -25,7 +25,7 @@ if (!defined('APP_VER') || !defined('BASEPATH')) { exit('No direct script access
 
 // ---------------------------------------------
 // 	Include config file
-//	(I get the version from config.php, so everything stays in sync.)
+//	(I get the version and other info from config.php, so everything stays in sync.)
 // ---------------------------------------------
 
 require_once PATH_THIRD.'reg_restrict/config.php';
@@ -58,8 +58,8 @@ class Reg_restrict_ext
 	
 	private $EE ;
 	
-	private $domain ;
-
+	private $domain = FALSE ;
+	private $destination_group = FALSE ;
 	
 	/**
 	 * ==============================================
@@ -328,7 +328,7 @@ class Reg_restrict_ext
 		$groups_list = $this->_member_groups_list();
 		
 		$sites_list = array(
-			0 => lang('rogee_rr_default_group'), 
+			0 => lang('rogee_rr_all_sites'), 
 			1 => $this->EE->config->item('site_label')." (".lang('rogee_rr_this_site').")"
 		);
 		
@@ -453,7 +453,7 @@ class Reg_restrict_ext
 
 		foreach ($_POST as $key => $val)
 		{
-			if (strpos($key, "domain_entry_") !== false)
+			if (strpos($key, "domain_entry_") !== FALSE)
 			{
 				$id = str_ireplace("domain_entry_", "", $key);  
 				$todo_list[$id] = $this->EE->input->post($key, TRUE);
@@ -464,20 +464,8 @@ class Reg_restrict_ext
 		// Get domain list data, for comparison to $_POST data.
 		// -------------------------------------------------
 
-		// loading domains
-		$this->EE->db->select('domain_id, domain_entry');
-		$query = $this->EE->db->get('rogee_reg_restrict');
+		$domain_list_data = $this->_domain_list_data();
 		
-		$domains_data = array();
-		
-		foreach ($query->result_array() as $row)
-		{
-			$domains_data[$row['domain_id']] = array(
-				'domain_id' => $row['domain_id'],
-				'domain_entry' => $row['domain_entry']
-			);
-		}
-
 		// -------------------------------------------------
 		// Identify changed records and enter new info into DB.
 		// -------------------------------------------------
@@ -590,69 +578,54 @@ class Reg_restrict_ext
 
 
 	/**
-	 * -------------------------
+	 * ==============================================
 	 * Validate domain 
-	 * -------------------------
+	 * ==============================================
 	 *
-	 * This method runs before a new member registration is processed and returns an error if the email isn't from an allowed domain.
+	 * This method runs before a new member registration is processed and shows an error if the email isn't from an allowed domain.
 	 *
 	 * @return void
 	 */
 	function validate_domain()
 	{
+	
+		// ---------------------------------------------
+		//	We only care about this function if "require_valid_domain" is set.
+		// ---------------------------------------------
+		
+		if ($this->settings['require_valid_domain'] != 'yes')
+		{
+			$this->debug("Valid domain not required. Skipping validation.");
+			return;
+		}
+		
+		// ---------------------------------------------
+		//	See if we can validate the an email address on our access list
+		// ---------------------------------------------
 		
 		$match = FALSE ;
-		
-		// First, we try validating the email value from the default EE registration system.
-		
-		$email_address = $this->EE->input->post($this->settings['form_field'], TRUE);
-		
-		// If there is no email value provided, maybe we're using Solspace User and need to check the username field instead.
-		
-		if ($email_address === FALSE && $this->_detect_solspace())
+			
+		if ($this->_get_domain())
 		{
 			
-			// If the Solspace User is casting emails as usernames, we'll use the username field.
-
-			$email_address = $this->EE->input->post('username', TRUE);
-		
-		}
+			$this->debug("Validating domain: ".$this->domain);
 			
-		// Now, we try to find a match in the list of allowed domains.
-		
-		if ($email_address !== FALSE)
-		{
-
-			$email_split = explode("@", $email_address, 2);
-			$email_domain = $email_split[1];
+			$this->EE->db->where('domain_entry', $this->domain)
+					->where('site_id IN (0, '.$this->EE->config->item('site_id').')');
+			$query = $this->EE->db->get('rogee_reg_restrict', 1);
 			
-			$this->debug("validating domain: ".$email_address." from ".$email_domain);
-
-			// Load the list of allowed domains
-			
-			$this->EE->db->select('domain_id, domain_entry');
-			$query = $this->EE->db->get('rogee_reg_restrict');
-			
-			// Making a list of possible valid domains
-			
-			$access_list = array();
-			
-			foreach ($query->result_array() as $row)
+			if ($query->num_rows() > 0)
 			{
-				$access_list[$row['domain_id']] = $row['domain_entry'];
-			}
-			
-			// Checking whether the domain is on the list
-			
-			if (in_array($email_domain, $access_list))
-			{
-				$match = TRUE ;
+				$match = TRUE;
+				$this->debug("Validated domain: ".$this->domain." is assigned to group ".$query->row()->destination_group.".");
 			}
 		
 		}
 		
-		// If I haven't found a match, the domain name must be invalid.
-		// Interrupt membership processing and return the error.
+		// ---------------------------------------------
+		//	If there's no match, the domain name must be invalid.
+		//	Interrupt membership processing and return the error.
+		// ---------------------------------------------
 		
 		if (!$match)
 		{
@@ -662,6 +635,47 @@ class Reg_restrict_ext
 		}
 				
 	} // END validate_domain()
+
+
+
+	/**
+	 * ==============================================
+	 * Assign member
+	 * ==============================================
+	 *
+	 * This method runs after a new member registration is completed and
+	 * moves the member to an assigned member group based on email domain.
+	 *
+	 * @return void
+	 */
+	function assign_member($data, $member_id)
+	{
+		
+		if ($this->_get_domain())
+		{
+			
+			$this->EE->db->where('domain_entry', $this->domain)
+					->where('site_id IN (0, '.$this->EE->config->item('site_id').')');
+			$query = $this->EE->db->get('rogee_reg_restrict', 1);
+			
+			if ($query->num_rows() > 0)
+			{
+			
+				$this->destination_group = $query->row()->destination_group;
+			
+				$this->EE->db->where('member_id', $member_id);
+				$this->EE->db->update(
+					'members', 
+					array('group_id' => $this->destination_group)
+				);
+			
+				$this->debug("Assigned member: ".$this->domain." is assigned to group ".$this->destination_group.".");
+				
+			}
+		
+		}
+				
+	} // END assign_member()
 
 
 
@@ -812,13 +826,68 @@ class Reg_restrict_ext
 		
 		foreach ($query->result_array() as $row)
 		{
-			$groups[$row['group_id']] = $row['group_id']." (".$row['group_title'].")";
+			$list[] = $row['group_id']." (".$row['group_title'].")";
 		}
 		
 		return $list;
 	
 	} // END _member_groups_list()
 
+
+
+	/**
+	 * ==============================================
+	 * Get domain
+	 * ==============================================
+	 *
+	 * Returns the domain of the email address value in POST.
+	 *
+	 * @access	private
+	 * @return 	array: Array containing data for the entries in the domain list
+	 */
+	private function _get_domain()
+	{
+	
+		// ---------------------------------------------
+		//	First, we try validating the email value from the default EE registration system.
+		// ---------------------------------------------
+		
+		$email_address = $this->EE->input->post($this->settings['form_field'], TRUE);
+		
+		// ---------------------------------------------
+		//	If there is no email value provided, maybe Solspace User is active, so we check the username field instead.
+		// ---------------------------------------------
+		
+		if ($email_address === FALSE && $this->_detect_solspace())
+		{
+			// If the Solspace User is casting emails as usernames, we'll use the username field.
+			$email_address = $this->EE->input->post('username', TRUE);
+		}
+		
+		// ---------------------------------------------
+		//	If we found an email address, get (and return) the domain portion
+		// ---------------------------------------------
+		
+		if ($email_address !== FALSE)
+		{
+
+			// ---------------------------------------------
+			//	Exploderate the email address
+			// ---------------------------------------------
+
+			$email_split = explode("@", $email_address, 2);
+			return $this->domain = $email_split[1];
+			
+		}
+		
+		// ---------------------------------------------
+		//	Otherwise, no dice.
+		// ---------------------------------------------
+		
+		return FALSE ;
+			
+	} // END _get_domain()
+	
 
 
 } // END CLASS
