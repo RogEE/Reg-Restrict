@@ -12,7 +12,7 @@
 if ( ! defined('ROGEE_RR_VERSION') )
 {
 	define('ROGEE_RR_NAME', 'RogEE Reg Restrict');
-	define('ROGEE_RR_VERSION', '2.a.3');
+	define('ROGEE_RR_VERSION', '2.a.4');
 	define('ROGEE_RR_DOCS', 'http://michaelrog.com/ee/reg-restrict');
 }
 

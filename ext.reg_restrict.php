@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.a.3 (ALPHA)
+v2.a.4 (ALPHA)
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -333,6 +333,8 @@ class Reg_restrict_ext
 		);
 		
 		$vars['show_multi_site_field'] = ($this->EE->config->item('multiple_sites_enabled') == 'y') ? TRUE : FALSE;
+		
+		$vars['dev_on'] = $this->dev_on;
 
 		// ---------------------------------------------
 		//	From the domain list data, assemble the domain list form fields.
@@ -385,7 +387,7 @@ class Reg_restrict_ext
 		}
 		else
 		{
-			$vars['codes_fields']['new']['site_id'] = $sites_list[1].form_hidden('site_id_new', 0);
+			$vars['codes_fields']['new']['site_id'] = '-'.form_hidden('site_id_new', 0);
 		}
 		
 		// -------------------------------------------------
@@ -422,9 +424,9 @@ class Reg_restrict_ext
 
 
 	/**
-	 * -------------------------
+	 * ==============================================
 	 * Save Settings 
-	 * -------------------------
+	 * ==============================================
 	 *
 	 * This function provides a little extra processing and validation 
 	 * than the generic settings form.
@@ -475,17 +477,22 @@ class Reg_restrict_ext
 		foreach ($todo_list as $row => $val)
 		{
 		
+			// ---------------------------------------------
+			//	If a domain entry changed (but is still defined), update the record.
+			// ---------------------------------------------
+		
 			if (is_numeric($row) && $val != "") {
-			
-				// If a domain entry changed (but is still defined), update the record.
 				
 				$need_to_update = FALSE;
 				$found_duplicate = FALSE;
 				$new_data = array();
 				
-				if ($domains_data[$row]['domain_entry'] != $val)
+				if ($domain_list_data[$row]['domain_entry'] != $val)
 				{
-					// Don't allow duplicate domains
+				
+					// ---------------------------------------------
+					//	Don't allow duplicate domains
+					// ---------------------------------------------
 					if(count(array_keys($todo_list, $val)) < 2)
 					{
 						$new_data['domain_entry'] = $val;
@@ -496,40 +503,63 @@ class Reg_restrict_ext
 						$found_duplicate = TRUE;
 						$duplicate_domains[] = $val;
 					}
+					
+				}
+
+				if ($domain_list_data[$row]['destination_group'] != $this->EE->input->post('destination_group_'.$row))
+				{
+					$new_data['destination_group'] = $this->EE->input->post('destination_group_'.$row);
+					$need_to_update = TRUE;
+				}
+				
+				if ($domain_list_data[$row]['site_id'] != $this->EE->input->post('site_id_'.$row))
+				{
+					$new_data['site_id'] = $this->EE->input->post('site_id_'.$row);
+					$need_to_update = TRUE;
 				}
 				
 				if ($need_to_update && !$found_duplicate)
 				{
-					$this->EE->db->set($new_data);
-					$this->EE->db->where('domain_id', $row);
-					$this->EE->db->update('rogee_reg_restrict'); 
+					$this->EE->db->set($new_data)
+						->where('domain_id', $row)
+						->update('rogee_reg_restrict'); 
 				}
 
 			}
+			
+			// ---------------------------------------------
+			//	If a domain entry was erased, delete the record.
+			// ---------------------------------------------
+			
 			elseif (is_numeric($row) && $val === "")
 			{
 				
-				// If a domain entry was erased, delete the record.
-				
-				$this->EE->db->where('domain_id', $row);
-				$this->EE->db->delete('rogee_reg_restrict');
+				$this->EE->db->where('domain_id', $row)
+					->delete('rogee_reg_restrict');
 				
 			}
+
+			// ---------------------------------------------
+			//	If there's a new domain entry, insert a new record.
+			// ---------------------------------------------
+
 			elseif ($row == "new" && $val != "")
 			{
 				
-				// If there's a new domain entry, insert a new record.
-				
-				// Don't allow duplicate domain entry
+				// ---------------------------------------------
+				//	Don't allow duplicate domains
+				// ---------------------------------------------
 				if(count(array_keys($todo_list, $val)) < 2)
 				{
 					
 					$new_data = array(
-						'domain_entry' => $val
+						'domain_entry' => $val,
+						'destination_group' => $this->EE->input->post('destination_group_new'),
+						'site_id' => $this->EE->input->post('site_id_new')
 					);
 					
-					$this->EE->db->set($new_data);
-					$this->EE->db->insert('rogee_reg_restrict');
+					$this->EE->db->set($new_data)
+						->insert('rogee_reg_restrict');
 				
 				}
 				else
@@ -541,9 +571,9 @@ class Reg_restrict_ext
 			
 		}
 		
-		// -------------------------------------------------
-		// Set error/success messages & redirct to main CP or back to EXT CP.
-		// -------------------------------------------------
+		// ---------------------------------------------
+		//	Set error/success messages & redirct to main CP or back to EXT CP.
+		// ---------------------------------------------
 		
 		$error_string = "";
 		
