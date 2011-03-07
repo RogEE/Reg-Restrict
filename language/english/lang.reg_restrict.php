@@ -22,7 +22,7 @@ $lang = array(
 
 'rogee_rr_domain' => 'Domain',
 'rogee_rr_domains' => 'Domains',
-'rogee_rr_destination_group' => 'Destination group',
+'rogee_rr_destination_group' => 'Member group assignment',
 'rogee_rr_default_group' => "Default member group",
 'rogee_rr_site' => 'Site',
 'rogee_rr_this_site' => 'This site',

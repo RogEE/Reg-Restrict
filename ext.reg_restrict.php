@@ -97,7 +97,7 @@ class Reg_restrict_ext
 		}
 		if (!isset($settings['require_valid_domain']))
 		{
-			$settings['require_valid_domain'] = "no";
+			$settings['require_valid_domain'] = "yes";
 		}
 
 		$this->settings = $settings;
