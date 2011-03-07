@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.b.2 (BETA)
+v2.r.1
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -993,7 +993,7 @@ class Reg_restrict_ext
 	 * 
 	 * @see http://cubiq.org/the-perfect-php-clean-url-generator
 	 */
-	function _clean_string($str = "", $url_rules = TRUE) {
+	function _clean_string($str = "") {
 	
 		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
 		$clean = trim($clean, '-');
