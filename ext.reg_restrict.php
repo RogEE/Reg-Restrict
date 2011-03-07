@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.a.6 (ALPHA)
+v2.b.1 (BETA)
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -71,14 +71,11 @@ class Reg_restrict_ext
 
 	function Reg_restrict_ext($settings = FALSE)
 	{
-		$this->debug("Constructor: Reg_restrict_ext()");	
 		$this->__construct($settings);	
 	}
 
 	function __construct($settings = FALSE)
 	{
-
-		$this->debug("Constructor: __construct()");
 
 		// ---------------------------------------------
 		//	EE instance variable
@@ -89,10 +86,6 @@ class Reg_restrict_ext
 		// ---------------------------------------------
 		//	Default settings
 		// ---------------------------------------------
-
-		$this->debug("Settings: ".$settings);
-		$this->debug("Settings [form_field]: ".$settings['form_field']);
-		$this->debug("Settings [require_valid_domain]: ".$settings['require_valid_domain']);
 
 		if (!is_array($settings))
 		{
@@ -431,11 +424,11 @@ class Reg_restrict_ext
 		);
 		
 		$vars['general_settings_fields'] = array(
-			'form_field' => form_input('form_field', $this->settings['form_field']),
+			'form_field' => form_input('form_field', $current_settings['form_field']),
 			'require_valid_domain' => form_dropdown(
 				'require_valid_domain',
 				$options_yes_no, 
-				$this->settings['require_valid_domain'])
+				$current_settings['require_valid_domain'])
 		);
 
 		// -------------------------------------------------
@@ -504,6 +497,7 @@ class Reg_restrict_ext
 		// -------------------------------------------------
 		
 		$duplicate_domains = array();
+		$found_duplicate = FALSE;
 		
 		foreach ($todo_list as $row => $val)
 		{
@@ -515,7 +509,6 @@ class Reg_restrict_ext
 			if (is_numeric($row) && $val != "") {
 				
 				$need_to_update = FALSE;
-				$found_duplicate = FALSE;
 				$new_data = array();
 				
 				if ($domain_list_data[$row]['domain_entry'] != $val)
@@ -627,56 +620,25 @@ class Reg_restrict_ext
 
 		}
 
-		$this->EE->db->where('class', __CLASS__);
-		$this->EE->db->update('extensions', array('settings' => serialize($new_settings)));
+		$this->EE->db->where('class', __CLASS__)
+			->update('extensions', array('settings' => serialize($new_settings)));
+		$this->debug("[$form_field_input][$require_valid_domain_input][".serialize($new_settings)."]");
 
 		
 		// ---------------------------------------------
 		//	Set error/success messages & redirct to main CP or back to EXT CP.
 		// ---------------------------------------------
 		
-		$error_string = FALSE;
-		
-		if ($form_field_error)
-		{
-			$error_string = $this->EE->lang->line('rogee_rr_form_field_error')." ";			
-			$this->EE->session->set_flashdata(
-				'message_failure',
-				$this->EE->lang->line('reg_restrict_module_name').": ".$error_string
-			);
-		}
-		
-		if (count($duplicate_domains) > 0) {
-			$error_string = $this->EE->lang->line('rogee_rr_found_duplicates_error').implode(", ", $duplicate_codes);			
-			$this->EE->session->set_flashdata(
-				'message_failure',
-				$this->EE->lang->line('reg_restrict_module_name').": ".$error_string
-			);
-		}
-		
-/*
-
 		$error_string = "";
-		
-		if (count($duplicate_domains) > 0) {
-			$error_string .= $this->EE->lang->line('rogee_rr_found_duplicates_error').implode(", ", $duplicate_domains);			
-		}
 		
 		if ($form_field_error)
 		{
 			$error_string .= $this->EE->lang->line('rogee_rr_form_field_error')." ";
 		}
 		
-		
-		if ($error_string != "")
-		{
-			$this->EE->session->set_flashdata(
-				'message_failure',
-				$this->EE->lang->line('reg_restrict_module_name').": ".$error_string
-			);
+		if (count($duplicate_domains) > 0) {
+			$error_string .= $this->EE->lang->line('rogee_rr_found_duplicates_error').implode(", ", $duplicate_domains);
 		}
-		
-*/
 		
 		if (empty($error_string))
 		{
@@ -684,6 +646,19 @@ class Reg_restrict_ext
 				'message_success',
 			 	$this->EE->lang->line('reg_restrict_module_name').": ".$this->EE->lang->line('preferences_updated')
 			);
+		}
+		else
+		{
+
+			$this->EE->session->set_flashdata(
+				'message_failure',
+				$this->EE->lang->line('reg_restrict_module_name').": ".$error_string
+			);		
+		
+			$this->EE->functions->redirect(
+		    	BASE.AMP.'C=addons_extensions'.AMP.'M=extension_settings'.AMP.'file=reg_restrict'
+		    ); 
+		
 		}
 		
 		if (isset($_POST['submit']) && ! isset($_POST['submit_finished']))
