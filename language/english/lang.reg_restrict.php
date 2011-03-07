@@ -17,7 +17,7 @@ $lang = array(
 'rogee_rr_language' => 'RogEE Reg Restrict speaks English!',
 
 'rogee_rr_general_preferences' => 'General preferences',
-'rogee_rr_form_field' => 'Form field',
+'rogee_rr_form_field' => 'Form field name',
 'rogee_rr_require_valid_domain' => 'Require valid domain?',
 
 'rogee_rr_domain' => 'Domain',
@@ -35,7 +35,7 @@ $lang = array(
 'rogee_rr_instructions_destination_group' => "",
 'rogee_rr_instructions_site' => "",
 'rogee_rr_instructions_msm_enabled' => "",
-'rogee_rr_instructions_msm_disabled' => "(MSM is currently disabled.)",
+'rogee_rr_instructions_msm_disabled' => "<em>(MSM is currently disabled.)</em>",
 
 'rogee_rr_save' => 'Save',
 'rogee_rr_save_finished' => 'Save and Exit',

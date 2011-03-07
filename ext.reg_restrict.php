@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.b.1 (BETA)
+v2.b.2 (BETA)
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -393,7 +393,7 @@ class Reg_restrict_ext
 			}
 			else
 			{
-				$vars['codes_fields'][$key]['site_id'] = '-'.form_hidden('site_id_'.$key, $data['site_id']);
+				$vars['domain_list_fields'][$key]['site_id'] = '-'.form_hidden('site_id_'.$key, $data['site_id']);
 			}
 						
 		}
@@ -411,7 +411,7 @@ class Reg_restrict_ext
 		}
 		else
 		{
-			$vars['codes_fields']['new']['site_id'] = '-'.form_hidden('site_id_new', 0);
+			$vars['domain_list_fields']['new']['site_id'] = '-'.form_hidden('site_id_new', 0);
 		}
 		
 		// -------------------------------------------------
@@ -441,7 +441,7 @@ class Reg_restrict_ext
 		// All done. Go go gadget view file!
 		// -------------------------------------------------
 		
-		return $this->EE->load->view('admin', $vars, TRUE);			
+		return $this->EE->load->view('settings', $vars, TRUE);			
 	
 	} // END settings_form()
 
@@ -482,7 +482,7 @@ class Reg_restrict_ext
 			if (strpos($key, "domain_entry_") !== FALSE)
 			{
 				$id = str_ireplace("domain_entry_", "", $key);  
-				$todo_list[$id] = $this->EE->input->post($key, TRUE);
+				$todo_list[$id] = trim($this->EE->input->post($key, TRUE));
 			}
 		}
 
@@ -712,7 +712,7 @@ class Reg_restrict_ext
 			if ($query->num_rows() > 0)
 			{
 				$match = TRUE;
-				$this->debug("Validated domain: ".$this->domain." is assigned to group ".$query->row()->destination_group.".");
+				$this->debug($this->domain." is a valid domain.");
 			}
 		
 		}
@@ -757,14 +757,19 @@ class Reg_restrict_ext
 			{
 			
 				$this->destination_group = $query->row()->destination_group;
-			
-				$this->EE->db->where('member_id', $member_id);
-				$this->EE->db->update(
-					'members', 
-					array('group_id' => $this->destination_group)
-				);
-			
-				$this->debug("Assigned member: ".$this->domain." is assigned to group ".$this->destination_group.".");
+
+				if ($this->destination_group > 0)
+				{
+				
+					$this->EE->db->where('member_id', $member_id);
+					$this->EE->db->update(
+						'members', 
+						array('group_id' => $this->destination_group)
+					);
+				
+					$this->debug("Assigned member: ".$this->domain." is assigned to group ".$this->destination_group.".");
+				
+				}
 				
 			}
 		
@@ -988,7 +993,7 @@ class Reg_restrict_ext
 	 * 
 	 * @see http://cubiq.org/the-perfect-php-clean-url-generator
 	 */
-	function _clean_string($str) {
+	function _clean_string($str = "", $url_rules = TRUE) {
 	
 		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
 		$clean = trim($clean, '-');
