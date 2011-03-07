@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.a.4 (ALPHA)
+v2.a.5 (ALPHA)
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -141,6 +141,18 @@ class Reg_restrict_ext
 		);
 		
 		$this->EE->db->insert('extensions', $hook);
+		
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'assign_member',
+			'hook'		=> 'member_member_register',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 5,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);
+		
+		$this->EE->db->insert('extensions', $hook);			
 
 		// ---------------------------------------------
 		//	Hook: Solspace User module compatibility
@@ -156,6 +168,18 @@ class Reg_restrict_ext
 			'enabled'	=> 'y'
 		);
 		
+		$this->EE->db->insert('extensions', $hook);
+		
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'assign_member',
+			'hook'		=> 'user_register_end',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 5,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);			
+
 		$this->EE->db->insert('extensions', $hook);
 
 		// ---------------------------------------------
