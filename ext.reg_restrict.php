@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.a.5 (ALPHA)
+v2.a.6 (ALPHA)
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -66,27 +66,34 @@ class Reg_restrict_ext
 	 * Constructors
 	 * ==============================================
 	 *
-	 * @param	mixed	Settings array or FALSE if none exist.
+	 * @param mixed: Settings array or FALSE if none are provided.
 	 */
-	 
+
 	function Reg_restrict_ext($settings = FALSE)
 	{
-		$this->__construct($settings);
-	}	 
-	 
+		$this->debug("Constructor: Reg_restrict_ext()");	
+		$this->__construct($settings);	
+	}
+
 	function __construct($settings = FALSE)
 	{
-	
+
+		$this->debug("Constructor: __construct()");
+
 		// ---------------------------------------------
 		//	EE instance variable
 		// ---------------------------------------------
-	
+
 		$this->EE =& get_instance();
-		
+
 		// ---------------------------------------------
 		//	Default settings
 		// ---------------------------------------------
-		
+
+		$this->debug("Settings: ".$settings);
+		$this->debug("Settings [form_field]: ".$settings['form_field']);
+		$this->debug("Settings [require_valid_domain]: ".$settings['require_valid_domain']);
+
 		if (!is_array($settings))
 		{
 			$settings = array();
@@ -99,20 +106,20 @@ class Reg_restrict_ext
 		{
 			$settings['require_valid_domain'] = "no";
 		}
-		
+
 		$this->settings = $settings;
-		
+
 		// ---------------------------------------------
 		//	Localize
 		// ---------------------------------------------
-		
+
 		$this->EE->lang->loadfile('reg_restrict');
 		$this->description = $this->EE->lang->line('reg_restrict_module_description');
-	
+
 	} // END Constructor
-	
-	
-	
+
+
+
 	/**
 	 * ==============================================
 	 * Activate Extension 
@@ -125,11 +132,11 @@ class Reg_restrict_ext
 	 */
 	function activate_extension()
 	{
-		
+
 		// ---------------------------------------------
 		//	Hook: EE2 default Member module
 		// ---------------------------------------------
-		
+
 		$hook = array(
 			'class'		=> __CLASS__,
 			'method'	=> 'validate_domain',
@@ -139,9 +146,9 @@ class Reg_restrict_ext
 			'version'	=> $this->version,
 			'enabled'	=> 'y'
 		);
-		
+
 		$this->EE->db->insert('extensions', $hook);
-		
+
 		$hook = array(
 			'class'		=> __CLASS__,
 			'method'	=> 'assign_member',
@@ -151,7 +158,7 @@ class Reg_restrict_ext
 			'version'	=> $this->version,
 			'enabled'	=> 'y'
 		);
-		
+
 		$this->EE->db->insert('extensions', $hook);			
 
 		// ---------------------------------------------
@@ -167,9 +174,9 @@ class Reg_restrict_ext
 			'version'	=> $this->version,
 			'enabled'	=> 'y'
 		);
-		
+
 		$this->EE->db->insert('extensions', $hook);
-		
+
 		$hook = array(
 			'class'		=> __CLASS__,
 			'method'	=> 'assign_member',
@@ -185,7 +192,7 @@ class Reg_restrict_ext
 		// ---------------------------------------------
 		//	Create database table (if it doens't already exist).
 		// ---------------------------------------------
-		
+
 		if (! $this->EE->db->table_exists('rogee_reg_restrict'))
 		{
 		
@@ -198,19 +205,19 @@ class Reg_restrict_ext
 			));
 			$this->EE->dbforge->add_key('domain_id', TRUE);
 			$this->EE->dbforge->create_table('rogee_reg_restrict');
-			
+	
 		}		
-		
+
 		// ---------------------------------------------
 		//	And log.
 		// ---------------------------------------------
-		
+
 		$this->debug("Activated: ".$this->version);
-		
+
 	} // END activate_extension()
-	
-	
-	
+
+
+
 	/**
 	 * ==============================================
 	 * Update Extension 
@@ -224,7 +231,7 @@ class Reg_restrict_ext
 	 */
 	function update_extension($current = FALSE)
 	{
-	
+
 		if ($current === FALSE OR $current == $this->version)
 		{
 			$this->debug( "Update: No update needed. Current version: ".$current );
@@ -232,7 +239,7 @@ class Reg_restrict_ext
 		}
 		else
 		{
-		
+
 			// ---------------------------------------------
 			//	Un-register all hooks
 			// ---------------------------------------------
@@ -259,11 +266,11 @@ class Reg_restrict_ext
 				));
 				$this->debug( "Update: Creating destination_group field. (v2.0.0)" );
 			}
-			
+
 			// ---------------------------------------------
 			//	MSM support (added in 2.0.0)
 			// ---------------------------------------------
-		
+
 			if (! $this->EE->db->field_exists('site_id', 'rogee_reg_restrict') )
 			{
 				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
@@ -271,9 +278,9 @@ class Reg_restrict_ext
 				));
 				$this->debug( "Update: Creating site_id field. (v2.0.0)" );
 			}
-		
+
 		}
-					
+
 		// ---------------------------------------------
 		//	And log.
 		// ---------------------------------------------
@@ -594,16 +601,72 @@ class Reg_restrict_ext
 			}
 			
 		}
+
+		// ---------------------------------------------
+		//	Sanitize, serialize and save General Preferences.
+		// ---------------------------------------------
+		
+		$form_field_input = $this->EE->input->post('form_field', TRUE);
+		$require_valid_domain_input = $this->EE->input->post('require_valid_domain', TRUE);
+		
+		$new_settings = array(
+			'require_valid_domain' => ($require_valid_domain_input == 'yes' ? 'yes' : 'no')
+		);
+		
+		$form_field_error = FALSE;
+		
+		if (! empty($form_field_input))
+		{
+		
+			$new_settings['form_field'] = $this->_clean_string($form_field_input);
+			
+			if ($form_field_input != $new_settings['form_field'])
+			{
+				$form_field_error = TRUE;
+			}
+
+		}
+
+		$this->EE->db->where('class', __CLASS__);
+		$this->EE->db->update('extensions', array('settings' => serialize($new_settings)));
+
 		
 		// ---------------------------------------------
 		//	Set error/success messages & redirct to main CP or back to EXT CP.
 		// ---------------------------------------------
 		
+		$error_string = FALSE;
+		
+		if ($form_field_error)
+		{
+			$error_string = $this->EE->lang->line('rogee_rr_form_field_error')." ";			
+			$this->EE->session->set_flashdata(
+				'message_failure',
+				$this->EE->lang->line('reg_restrict_module_name').": ".$error_string
+			);
+		}
+		
+		if (count($duplicate_domains) > 0) {
+			$error_string = $this->EE->lang->line('rogee_rr_found_duplicates_error').implode(", ", $duplicate_codes);			
+			$this->EE->session->set_flashdata(
+				'message_failure',
+				$this->EE->lang->line('reg_restrict_module_name').": ".$error_string
+			);
+		}
+		
+/*
+
 		$error_string = "";
 		
 		if (count($duplicate_domains) > 0) {
 			$error_string .= $this->EE->lang->line('rogee_rr_found_duplicates_error').implode(", ", $duplicate_domains);			
 		}
+		
+		if ($form_field_error)
+		{
+			$error_string .= $this->EE->lang->line('rogee_rr_form_field_error')." ";
+		}
+		
 		
 		if ($error_string != "")
 		{
@@ -612,7 +675,10 @@ class Reg_restrict_ext
 				$this->EE->lang->line('reg_restrict_module_name').": ".$error_string
 			);
 		}
-		else
+		
+*/
+		
+		if (empty($error_string))
 		{
 			$this->EE->session->set_flashdata(
 				'message_success',
@@ -743,7 +809,7 @@ class Reg_restrict_ext
 	 * @access	private
 	 * @param	string: The debug string
 	 * @return	string: The debug string parameter
-	 */
+	 *//* */
 	private function debug($debug_statement = "")
 	{
 		
@@ -770,7 +836,7 @@ class Reg_restrict_ext
 		
 		return $debug_statement;
 		
-	} // END debug()
+	} // END debug() */
 	
 	
 	
@@ -909,16 +975,6 @@ class Reg_restrict_ext
 		$email_address = $this->EE->input->post($this->settings['form_field'], TRUE);
 		
 		// ---------------------------------------------
-		//	If there is no email value provided, maybe Solspace User is active, so we check the username field instead.
-		// ---------------------------------------------
-		
-		if ($email_address === FALSE && $this->_detect_solspace())
-		{
-			// If the Solspace User is casting emails as usernames, we'll use the username field.
-			$email_address = $this->EE->input->post('username', TRUE);
-		}
-		
-		// ---------------------------------------------
 		//	If we found an email address, get (and return) the domain portion
 		// ---------------------------------------------
 		
@@ -941,7 +997,31 @@ class Reg_restrict_ext
 		return FALSE ;
 			
 	} // END _get_domain()
+
+
+
+	/**
+	 * ==============================================
+	 * Clean string
+	 * ==============================================
+	 *
+	 * Cleans everything except alphanumeric/dash/underscore from the parameter string
+	 * (used to sanitize field name)
+	 *
+	 * @param string: to be sanitized
+	 * @return string: cleaned-up string
+	 * 
+	 * @see http://cubiq.org/the-perfect-php-clean-url-generator
+	 */
+	function _clean_string($str) {
 	
+		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
+		$clean = trim($clean, '-');
+		$clean = preg_replace("/[\/| _]+/", '_', $clean);
+		return $clean;
+	
+	} // END _clean_string()
+		
 
 
 } // END CLASS

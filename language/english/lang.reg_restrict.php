@@ -41,6 +41,7 @@ $lang = array(
 'rogee_rr_save_finished' => 'Save and Exit',
 
 'rogee_rr_found_duplicates_error' => "Some duplicate domains were not added, because they are already on the list: ",
+'rogee_rr_form_field_error' => "Some invalid characters were removed from the \"Form field name\" setting. (Only alphanumeric characters, dashes, and underscores are allowed in form field names.)",
 
 'rogee_rr_invalid_domain' => "You must use an email address from one of the allowed domains.",
 
