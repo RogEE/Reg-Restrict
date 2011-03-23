@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.r.3
+v2.r.5
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -60,7 +60,6 @@ class Reg_restrict_ext
 	
 	private $domain = FALSE ;
 	private $destination_group = FALSE ;
-
 	
 	/**
 	 * ==============================================
@@ -121,8 +120,8 @@ class Reg_restrict_ext
 	 *
 	 * This function enters the extension into the exp_extensions table
 	 *
-	 * @see	http://expressionengine.com/user_guide/development/extensions.html#enable
-	 * @return	void
+	 * @see http://expressionengine.com/user_guide/development/extensions.html#enable
+	 * @return void
 	 */
 	function activate_extension()
 	{
@@ -183,7 +182,15 @@ class Reg_restrict_ext
 
 		$this->EE->db->insert('extensions', $hook);
 
-		$hook = arraylog;			
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'member_member_register',
+			'hook'		=> 'user_register_end',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 5,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);	
 
 		$this->EE->db->insert('extensions', $hook);
 
@@ -238,6 +245,8 @@ class Reg_restrict_ext
 		else
 		{
 
+			$this->log("Updating...");
+
 			// ---------------------------------------------
 			//	Un-register all hooks
 			// ---------------------------------------------
@@ -248,10 +257,7 @@ class Reg_restrict_ext
 			//	Re-register hooks by running activate_extension()
 			// ---------------------------------------------
 
-			$this->log("Updating...");
 			$this->activate_extension();
-
-			$this->EE->load->dbforge();
 
 			// ---------------------------------------------
 			//	Member group assignment (added in 2.0.0)
@@ -753,12 +759,12 @@ class Reg_restrict_ext
 		
 		if ($this->EE->config->item('req_mbr_activation') != 'email')
 		{
-			$this-log("Processing member {$member_id} (member_member_register).");
-			_assign_member($member_id, $data['email']);
+			$this->log("Processing member ".$member_id." [member_member_register]");
+			$this->_assign_member($member_id, FALSE);
 		}
 		else
 		{
-			$this-log("Email activation required; Skipping processing for member {$member_id}.");
+			$this->log("Email activation required; Skipping processing for member ".$member_id);
 		}
 				
 	} // END member_member_register()
@@ -778,7 +784,7 @@ class Reg_restrict_ext
 	function member_register_validate_members($member_id)
 	{
 		
-		$this-log("Processing member {$member_id} (member_register_validate_members).");
+		$this->log("Processing member ".$member_id." [member_register_validate_members].");
 		
 		$this->EE->db->where('member_id', $member_id);
 		$query = $this->EE->db->get('members', 1);
@@ -786,7 +792,7 @@ class Reg_restrict_ext
 		if ($query->num_rows() == 1)
 		{
 
-			_assign_member($member_id, $query->row()->email);
+			$this->_assign_member($member_id, $query->row()->email);
 			
 		}
 				
@@ -828,7 +834,7 @@ class Reg_restrict_ext
 						array('group_id' => $this->destination_group)
 					);
 				
-					$this->log("Assigned member: {$member_id} is assigned to group {$this->destination_group}.");
+					$this->log("Member: ".$member_id." is assigned to group ".$this->destination_group);
 				
 				}
 				
