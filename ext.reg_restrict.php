@@ -6,7 +6,7 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.r.1
+v2.r.3
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
@@ -60,6 +60,7 @@ class Reg_restrict_ext
 	
 	private $domain = FALSE ;
 	private $destination_group = FALSE ;
+
 	
 	/**
 	 * ==============================================
@@ -132,7 +133,7 @@ class Reg_restrict_ext
 
 		$hook = array(
 			'class'		=> __CLASS__,
-			'method'	=> 'validate_domain',
+			'method'	=> 'member_member_register_start',
 			'hook'		=> 'member_member_register_start',
 			'settings'	=> serialize($this->settings),
 			'priority'	=> 2,
@@ -144,7 +145,7 @@ class Reg_restrict_ext
 
 		$hook = array(
 			'class'		=> __CLASS__,
-			'method'	=> 'assign_member',
+			'method'	=> 'member_member_register',
 			'hook'		=> 'member_member_register',
 			'settings'	=> serialize($this->settings),
 			'priority'	=> 5,
@@ -154,13 +155,25 @@ class Reg_restrict_ext
 
 		$this->EE->db->insert('extensions', $hook);			
 
+		$hook = array(
+			'class'		=> __CLASS__,
+			'method'	=> 'member_register_validate_members',
+			'hook'		=> 'member_register_validate_members',
+			'settings'	=> serialize($this->settings),
+			'priority'	=> 5,
+			'version'	=> $this->version,
+			'enabled'	=> 'y'
+		);
+
+		$this->EE->db->insert('extensions', $hook);	
+
 		// ---------------------------------------------
 		//	Hook: Solspace User module compatibility
 		// ---------------------------------------------
 
 		$hook = array(
 			'class'		=> __CLASS__,
-			'method'	=> 'validate_domain',
+			'method'	=> 'member_member_register_start',
 			'hook'		=> 'user_register_start',
 			'settings'	=> serialize($this->settings),
 			'priority'	=> 2,
@@ -170,15 +183,7 @@ class Reg_restrict_ext
 
 		$this->EE->db->insert('extensions', $hook);
 
-		$hook = array(
-			'class'		=> __CLASS__,
-			'method'	=> 'assign_member',
-			'hook'		=> 'user_register_end',
-			'settings'	=> serialize($this->settings),
-			'priority'	=> 5,
-			'version'	=> $this->version,
-			'enabled'	=> 'y'
-		);			
+		$hook = arraylog;			
 
 		$this->EE->db->insert('extensions', $hook);
 
@@ -205,7 +210,7 @@ class Reg_restrict_ext
 		//	And log.
 		// ---------------------------------------------
 
-		$this->debug("Activated: ".$this->version);
+		$this->log("Activated: ".$this->version);
 
 	} // END activate_extension()
 
@@ -227,7 +232,7 @@ class Reg_restrict_ext
 
 		if ($current === FALSE OR $current == $this->version)
 		{
-			$this->debug( "Update: No update needed. Current version: ".$current );
+			$this->log("Update: No update needed. Current version: ".$current);
 			return FALSE;
 		}
 		else
@@ -237,13 +242,13 @@ class Reg_restrict_ext
 			//	Un-register all hooks
 			// ---------------------------------------------
 			$this->EE->db->where('class', __CLASS__)
-					->delete('extensions');
+				->delete('extensions');
 			
 			// ---------------------------------------------
 			//	Re-register hooks by running activate_extension()
 			// ---------------------------------------------
 
-			$this->debug( "Updating..." );
+			$this->log("Updating...");
 			$this->activate_extension();
 
 			$this->EE->load->dbforge();
@@ -257,7 +262,7 @@ class Reg_restrict_ext
 				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
 					'destination_group' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
 				));
-				$this->debug( "Update: Creating destination_group field. (v2.0.0)" );
+				$this->log("Update: Creating destination_group field. (v2.0.0)");
 			}
 
 			// ---------------------------------------------
@@ -269,7 +274,7 @@ class Reg_restrict_ext
 				$this->EE->dbforge->add_column('rogee_reg_restrict', array(
 					'site_id' => array('type' => 'INT', 'constraint' => 5, 'unsigned' => TRUE, 'default' => 0)
 				));
-				$this->debug( "Update: Creating site_id field. (v2.0.0)" );
+				$this->log("Update: Creating site_id field. (v2.0.0)");
 			}
 
 		}
@@ -278,7 +283,7 @@ class Reg_restrict_ext
 		//	And log.
 		// ---------------------------------------------
 		
-		$this->debug( "Update complete: ".$this->version );
+		$this->log("Update complete: ".$this->version);
 	
 	} // END update_extension()
 	
@@ -302,7 +307,7 @@ class Reg_restrict_ext
 		// ---------------------------------------------
 		
 		$this->EE->db->where('class', __CLASS__)
-				->delete('extensions');
+			->delete('extensions');
 		
 		// ---------------------------------------------
 		//	Drop the table [if it exists]
@@ -315,10 +320,9 @@ class Reg_restrict_ext
 		//	And log.
 		// ---------------------------------------------
 		
-		$this->debug("Disabled.");
+		$this->log("Disabled.");
 	
 	} // END disable_extension()
-
 
 
 
@@ -383,7 +387,7 @@ class Reg_restrict_ext
 					)
 			);
 			
-			if ($vars['show_multi_site_field'] == 'yes')
+			if ($vars['show_multi_site_field'])
 			{
 				$vars['domain_list_fields'][$key]['site_id'] = form_dropdown(
 					'site_id_'.$key,
@@ -405,7 +409,7 @@ class Reg_restrict_ext
 			'destination_group' => form_dropdown('destination_group_new', $groups_list, 0)
 		);
 					
-		if ($vars['show_multi_site_field'] == 'yes')
+		if ($vars['show_multi_site_field'])
 		{
 			$vars['domain_list_fields']['new']['site_id'] = form_dropdown('site_id_new', $sites_list, 0);
 		}
@@ -622,7 +626,7 @@ class Reg_restrict_ext
 
 		$this->EE->db->where('class', __CLASS__)
 			->update('extensions', array('settings' => serialize($new_settings)));
-		$this->debug("[$form_field_input][$require_valid_domain_input][".serialize($new_settings)."]");
+		$this->log("New settings: [".serialize($new_settings)."]");
 
 		
 		// ---------------------------------------------
@@ -674,14 +678,14 @@ class Reg_restrict_ext
 
 	/**
 	 * ==============================================
-	 * Validate domain 
+	 * member_member_register_start
 	 * ==============================================
 	 *
 	 * This method runs before a new member registration is processed and shows an error if the email isn't from an allowed domain.
 	 *
 	 * @return void
 	 */
-	function validate_domain()
+	function member_member_register_start()
 	{
 	
 		// ---------------------------------------------
@@ -690,7 +694,7 @@ class Reg_restrict_ext
 		
 		if ($this->settings['require_valid_domain'] != 'yes')
 		{
-			$this->debug("Valid domain not required. Skipping validation.");
+			$this->log("Valid domain not required; Skipping validation.");
 			return;
 		}
 		
@@ -703,7 +707,7 @@ class Reg_restrict_ext
 		if ($this->_get_domain())
 		{
 			
-			$this->debug("Validating domain: ".$this->domain);
+			$this->log("Validating domain: ".$this->domain);
 			
 			$this->EE->db->where('domain_entry', $this->domain)
 					->where('site_id IN (0, '.$this->EE->config->item('site_id').')');
@@ -712,7 +716,7 @@ class Reg_restrict_ext
 			if ($query->num_rows() > 0)
 			{
 				$match = TRUE;
-				$this->debug($this->domain." is a valid domain.");
+				$this->log($this->domain." is a valid domain.");
 			}
 		
 		}
@@ -729,7 +733,64 @@ class Reg_restrict_ext
 			return $this->EE->output->show_user_error('submission', $error);
 		}
 				
-	} // END validate_domain()
+	} // END member_member_register_start()
+
+
+
+	/**
+	 * ==============================================
+	 * member_member_register
+	 * ==============================================
+	 *
+	 * This method runs after a new member registration is completed and
+	 * moves the member to an assigned member group (based on email domain),
+	 * UNLESS the member needs to self-validate first.
+	 *
+	 * @return void
+	 */
+	function member_member_register($data, $member_id)
+	{
+		
+		if ($this->EE->config->item('req_mbr_activation') != 'email')
+		{
+			$this-log("Processing member {$member_id} (member_member_register).");
+			_assign_member($member_id, $data['email']);
+		}
+		else
+		{
+			$this-log("Email activation required; Skipping processing for member {$member_id}.");
+		}
+				
+	} // END member_member_register()
+
+
+
+	/**
+	 * ==============================================
+	 * member_register_validate_members
+	 * ==============================================
+	 *
+	 * This method runs after a new member registration is self-validated and
+	 * moves the member to an assigned member group (based on email domain).
+	 *
+	 * @return void
+	 */
+	function member_register_validate_members($member_id)
+	{
+		
+		$this-log("Processing member {$member_id} (member_register_validate_members).");
+		
+		$this->EE->db->where('member_id', $member_id);
+		$query = $this->EE->db->get('members', 1);
+		
+		if ($query->num_rows() == 1)
+		{
+
+			_assign_member($member_id, $query->row()->email);
+			
+		}
+				
+	} // END member_member_register()
 
 
 
@@ -743,17 +804,17 @@ class Reg_restrict_ext
 	 *
 	 * @return void
 	 */
-	function assign_member($data, $member_id)
+	private function _assign_member($member_id = 0, $email = FALSE)
 	{
 		
-		if ($this->_get_domain())
+		if ($this->_get_domain($email))
 		{
 			
 			$this->EE->db->where('domain_entry', $this->domain)
-					->where('site_id IN (0, '.$this->EE->config->item('site_id').')');
+				->where('site_id IN (0, '.$this->EE->config->item('site_id').')');
 			$query = $this->EE->db->get('rogee_reg_restrict', 1);
 			
-			if ($query->num_rows() > 0)
+			if ($query->num_rows() == 1)
 			{
 			
 				$this->destination_group = $query->row()->destination_group;
@@ -767,7 +828,7 @@ class Reg_restrict_ext
 						array('group_id' => $this->destination_group)
 					);
 				
-					$this->debug("Assigned member: ".$this->domain." is assigned to group ".$this->destination_group.".");
+					$this->log("Assigned member: {$member_id} is assigned to group {$this->destination_group}.");
 				
 				}
 				
@@ -775,22 +836,22 @@ class Reg_restrict_ext
 		
 		}
 				
-	} // END assign_member()
+	} // END _assign_member()
 
 
 
 	/**
 	 * ==============================================
-	 * Debug 
+	 * Log 
 	 * ==============================================
 	 *
 	 * This method places a string into my debug log. For developemnt purposes.
 	 *
-	 * @access	private
-	 * @param	string: The debug string
-	 * @return	string: The debug string parameter
-	 *//* */
-	private function debug($debug_statement = "")
+	 * @access private
+	 * @param string: The log string
+	 * @return string: The log string parameter
+	 */
+	private function log($log_statement = "")
 	{
 		
 		if ($this->dev_on)
@@ -809,14 +870,14 @@ class Reg_restrict_ext
 				$this->EE->dbforge->create_table('rogee_debug_log');
 			}
 			
-			$log_item = array('class' => __CLASS__, 'event' => $debug_statement, 'timestamp' => time());
+			$log_item = array('class' => __CLASS__, 'event' => $log_statement, 'timestamp' => time());
 			$this->EE->db->set($log_item);
 			$this->EE->db->insert('rogee_debug_log');
 		}
 		
-		return $debug_statement;
+		return $log_statement;
 		
-	} // END debug() */
+	} // END log()
 	
 	
 	
@@ -853,7 +914,7 @@ class Reg_restrict_ext
 					
 		}
 			
-		$this->debug("Solspace detection: ".$using_email_as_username);
+		$this->log("Solspace detection: ".$using_email_as_username);
 				
 		return $using_email_as_username ;
 		
@@ -945,14 +1006,17 @@ class Reg_restrict_ext
 	 * @access	private
 	 * @return 	array: Array containing data for the entries in the domain list
 	 */
-	private function _get_domain()
+	private function _get_domain($email_address = FALSE)
 	{
 	
 		// ---------------------------------------------
-		//	First, we try validating the email value from the default EE registration system.
+		//	If I give you an email address, use it. Otherwise, try to find one in the POST data.
 		// ---------------------------------------------
-		
-		$email_address = $this->EE->input->post($this->settings['form_field'], TRUE);
+	
+		if (!$email_address)
+		{
+			$email_address = $this->EE->input->post($this->settings['form_field'], TRUE);
+		}
 		
 		// ---------------------------------------------
 		//	If we found an email address, get (and return) the domain portion
