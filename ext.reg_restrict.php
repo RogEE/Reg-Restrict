@@ -46,17 +46,37 @@ require_once PATH_THIRD.'reg_restrict/config.php';
 class Reg_restrict_ext
 {
 
+	// ---------------------------------------------
+	//	Add-on info
+	// ---------------------------------------------
+
 	var $name = ROGEE_RR_NAME ;
 	var $version = ROGEE_RR_VERSION ;
 	var $docs_url = ROGEE_RR_DOCS ;
 	var $description = "Restricts registration to a list of allowed domains." ;
+    var $settings_exist = "y" ;	
+	
+	// ---------------------------------------------
+	//	Add-on settings
+	// ---------------------------------------------
 	
 	var $settings = array() ;
-    var $settings_exist = "y" ;
-    	
-	private $dev_on	= TRUE ;
-	
+
+	// ---------------------------------------------
+	//	Local instance of EE superobject
+	// ---------------------------------------------
+
 	private $EE ;
+
+	// ---------------------------------------------
+	//	Development mode switch: TRUE enables logging
+	// ---------------------------------------------
+
+	private $dev_on	= FALSE ;
+	
+	// ---------------------------------------------
+	//	Other important infos
+	// ---------------------------------------------
 	
 	private $domain = FALSE ;
 	private $destination_group = FALSE ;
