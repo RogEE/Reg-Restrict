@@ -6,17 +6,17 @@
 RogEE "Reg Restrict"
 an extension for ExpressionEngine 2
 by Michael Rog
-v2.r.5
+version 2.0.0
 
 Email Michael with questions, feedback, suggestions, bugs, etc.
 >> michael@michaelrog.com
 >> http://michaelrog.com/ee
 
 This extension is compatible with NSM Addon Updater:
->> http://expressionengine-addons.com/nsm-addon-updater
+>> http://ee-garage.com/nsm-addon-updater
 
 Changelog:
->> http://bitbucket.org/rogee/reg_restrict/raw/tip/versions.xml
+>> http://michaelrog.com/ee/versions/reg-restrict
  
 =====================================================
 */

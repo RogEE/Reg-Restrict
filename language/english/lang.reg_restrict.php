@@ -25,7 +25,7 @@ $lang = array(
 'rogee_rr_destination_group' => 'Member group assignment',
 'rogee_rr_default_group' => "Default member group",
 'rogee_rr_site' => 'Site',
-'rogee_rr_this_site' => 'This site',
+'rogee_rr_this_site' => 'This site only',
 'rogee_rr_all_sites' => 'All sites',
 
 'rogee_rr_new' => '(new)',
