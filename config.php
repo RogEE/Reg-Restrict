@@ -12,15 +12,15 @@
 if ( ! defined('ROGEE_RR_VERSION') )
 {
 	define('ROGEE_RR_NAME', 'RogEE Reg Restrict');
-	define('ROGEE_RR_VERSION', '2.r.5');
+	define('ROGEE_RR_VERSION', '2.0.0');
 	define('ROGEE_RR_DOCS', 'http://michaelrog.com/ee/reg-restrict');
 }
 
 $config['name'] = ROGEE_RR_NAME;
 $config['version'] = ROGEE_RR_VERSION;
-$config['nsm_addon_updater']['versions_xml'] = 'http://bitbucket.org/rogee/reg_restrict/raw/tip/versions.xml';
+$config['nsm_addon_updater']['versions_xml'] = 'http://michaelrog.com/ee/versions/reg-restrict';
 
 
-    
+
 /* End of file config.php */
 /* Location: ./system/expressionengine/third_party/reg_restrict/config.php */
