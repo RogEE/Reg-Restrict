@@ -3,7 +3,7 @@
 /*
 =====================================================
 
-RogEE "Registration Codes"
+RogEE "Reg Restrict"
 an extension for ExpressionEngine
 by Michael Rog
 
@@ -12,7 +12,7 @@ email Michael with questions, feedback, suggestions, bugs, etc.
 >> http://rog.ee
 
 Change-log:
->> http://rog.ee/versions/registration_codes
+>> http://rog.ee/versions/reg_restrict
 
 =====================================================
 */
@@ -21,14 +21,14 @@ Change-log:
 if (!defined('EXT')) exit('No direct script access allowed.');
 
 /**
- * Registration Codes class, for ExpressionEngine 1.7+
+ * Reg Restrict class, for ExpressionEngine 1.7+
  *
- * @package RogEE Registration Codes
+ * @package RogEE Reg Restrict
  * @author Michael Rog <michael@michaelrog.com>
  * @copyright 2011 Michael Rog (http://rog.ee)
  */
  
-class Registration_codes
+class Reg_restrict
 {
 
 
@@ -36,11 +36,11 @@ class Registration_codes
 	//	Extension information
 	// ---------------------------------------------
 
-	var $name = 'Registration Codes';
-	var $version = '1.2.0';
-	var $description = 'Sort/limit new member registrations based on custom registration codes.';
+	var $name = 'Reg Restrict';
+	var $version = '1.3.0';
+	var $description = 'Sort/limit new member registrations based on their email domains.';
 	var $settings_exist = 'y';
-	var $docs_url = 'http://rog.ee/registration_codes';
+	var $docs_url = 'http://rog.ee/reg_restrict';
     
     // ---------------------------------------------
     //	Settings
@@ -74,7 +74,7 @@ class Registration_codes
 	*
 	*/
     
-	function Registration_codes($settings="")
+	function Reg_restrict($settings="")
 	{
 		
 		// ---------------------------------------------
@@ -115,7 +115,7 @@ class Registration_codes
 		
 		$settings =	array();
 		$settings['require_valid_code'] = 'n';
-		$settings['form_field'] = 'registration_code';
+		$settings['form_field'] = 'registration_domain';
 		$settings['bypass_enabled'] = 'n';
 		$settings['bypass_code'] = '';
 		$settings['bypass_form_field'] = '';
@@ -130,7 +130,7 @@ class Registration_codes
 				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'member_member_register_start',
-				'method' => 'validate_registration_code',
+				'method' => 'validate_registration_domain',
 				'settings' => serialize($settings),
 				'priority' => 2,
 				'version' => $this->version,
@@ -140,7 +140,7 @@ class Registration_codes
 				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'user_register_start',
-				'method' => 'validate_registration_code',
+				'method' => 'validate_registration_domain',
 				'settings' => serialize($settings),
 				'priority' => 2,
 				'version' => $this->version,
@@ -150,7 +150,7 @@ class Registration_codes
 				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'member_member_register',
-				'method' => 'execute_registration_code',
+				'method' => 'execute_registration_domain',
 				'settings' => serialize($settings),
 				'priority' => 5,
 				'version' => $this->version,
@@ -160,7 +160,7 @@ class Registration_codes
 				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'user_register_end',
-				'method' => 'execute_registration_code_solspace',
+				'method' => 'execute_registration_domain_solspace',
 				'settings' => serialize($settings),
 				'priority' => 5,
 				'version' => $this->version,
@@ -180,12 +180,12 @@ class Registration_codes
 		//	Create database table
 		// ---------------------------------------------
 		
-		$sql[] = "CREATE TABLE IF NOT EXISTS exp_rogee_registration_codes (
-			code_id INT(5) UNSIGNED NOT NULL AUTO_INCREMENT,
+		$sql[] = "CREATE TABLE IF NOT EXISTS exp_rogee_reg_restrict (
+			domain_id INT(5) UNSIGNED NOT NULL AUTO_INCREMENT,
 			site_id INT(5) UNSIGNED NOT NULL, 
-			code_string TEXT NOT NULL, 
+			domain_string TEXT NOT NULL, 
 			destination_group INT(3) UNSIGNED NOT NULL, 
-			PRIMARY KEY (code_id)
+			PRIMARY KEY (domain_id)
 			);" ;
     
         foreach ($sql as $query)
@@ -264,7 +264,7 @@ class Registration_codes
 		
 		$sql[] = "DELETE FROM exp_extensions WHERE class = '".__CLASS__."'";
 
-		$sql[] = "DROP TABLE IF EXISTS exp_rogee_registration_codes";
+		$sql[] = "DROP TABLE IF EXISTS exp_rogee_reg_restrict";
 		
 		foreach ($sql as $query)
 		{
@@ -335,16 +335,16 @@ class Registration_codes
 		?>
 		
 			<style>
-			.rogee_rc_form fieldset { border: 1px solid #777; background: #EEF4F9; }
-			.rogee_rc_form legend { padding: 7px ; color: black; border: 1px solid #777; background: #B8C6CE; border-radius: 2px; }
-			.rogee_rc_form input { padding: 5px; font-size: 110%; border-radius: 5px; max-width: 40%; border: 1px solid #aaa; }
-			.rogee_rc_form .submit { background: #EEF4F9; cursor: pointer; }
-			.rogee_rc_form .submit:hover { background: #B8C6CE; }
-			.rogee_rc_form .submit:active { position: relative; top: 1px; }
+			.rogee_rr_form fieldset { border: 1px solid #777; background: #EEF4F9; }
+			.rogee_rr_form legend { padding: 7px ; color: black; border: 1px solid #777; background: #B8C6CE; border-radius: 2px; }
+			.rogee_rr_form input { padding: 5px; font-size: 110%; border-radius: 5px; max-width: 40%; border: 1px solid #aaa; }
+			.rogee_rr_form .submit { background: #EEF4F9; cursor: pointer; }
+			.rogee_rr_form .submit:hover { background: #B8C6CE; }
+			.rogee_rr_form .submit:active { position: relative; top: 1px; }
 			
-			.rogee_rc_form .tableBorder td.tableHeadingAlt { padding: 10px 0; }		
-			.rogee_rc_form .tableBorder td { padding: 7px 0; }
-			.rogee_rc_form .tableBorder { border: 1px solid; }
+			.rogee_rr_form .tableBorder td.tableHeadingAlt { padding: 10px 0; }		
+			.rogee_rr_form .tableBorder td { padding: 7px 0; }
+			.rogee_rr_form .tableBorder { border: 1px solid; }
 					
 			</style>
 		
@@ -361,13 +361,13 @@ class Registration_codes
 		$DSP->body .= $DSP->form_open(
 			array(
 				'action' => 'C=admin'.AMP.'M=utilities'.AMP.'P=save_extension_settings',
-				'name' => 'rogee_registration_codes_settings',
-				'id' => 'rogee_registration_codes_settings',
-				'class' => 'rogee_rc_form'
+				'name' => 'rogee_reg_restrict_settings',
+				'id' => 'rogee_reg_restrict_settings',
+				'class' => 'rogee_rr_form'
 			),
 			array(
 				'name' => get_class($this),
-				'return_location' => BASE.AMP.'C=admin'.AMP.'M=utilities'.AMP.'P=extension_settings'.AMP.'name=registration_codes'
+				'return_location' => BASE.AMP.'C=admin'.AMP.'M=utilities'.AMP.'P=extension_settings'.AMP.'name=reg_restrict'
 			)
 		);
 	
@@ -395,7 +395,7 @@ class Registration_codes
 	        .$DSP->div_c();
 	              
 		$DSP->body .= $DSP->div('itemWrapper')
-			.$DSP->qdiv('itemTitle', "Require valid code to register?")
+			.$DSP->qdiv('itemTitle', "Require valid domain to register?")
 			.$DSP->input_select_header('require_valid_code')
 			.$DSP->input_select_option('y', $LANG->line('yes'), ($current['require_valid_code'] == 'y'))
 			.$DSP->input_select_option('n', $LANG->line('no'), ($current['require_valid_code'] == 'n'))
@@ -444,11 +444,11 @@ class Registration_codes
 		//	Registration codes
 		// ---------------------------------------------	
 		
-		// Get registration_code data from the database
+		// Get registration_domain data from the database
 		
-		$registration_code_data = array();
+		$registration_domain_data = array();
 		
-		$query = $DB->query("SELECT * FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.") ORDER BY code_string");
+		$query = $DB->query("SELECT * FROM exp_rogee_reg_restrict WHERE site_id IN (0,".$this->this_site_id.") ORDER BY domain_string");
 	
 		if ($query->num_rows > 0)
 		{
@@ -456,13 +456,13 @@ class Registration_codes
 			{
 				
 				$row_data = array(
-					'code_id' => $row['code_id'],
+					'domain_id' => $row['domain_id'],
 					'site_id' => $row['site_id'],
-					'code_string' => $row['code_string'],
+					'domain_string' => $row['domain_string'],
 					'destination_group' => $row['destination_group']
 				);
 				
-				$registration_code_data[ $row['code_id'] ] = $row_data;
+				$registration_domain_data[ $row['domain_id'] ] = $row_data;
 	
 			}
 		}
@@ -485,16 +485,16 @@ class Registration_codes
 		
 		// Form field rows for EXISTING CODES
 		
-		foreach($registration_code_data as $row)
+		foreach($registration_domain_data as $row)
 		{
 	
 			$current_zebra_class = $this->zebra_stripe();
 			
-			$code_id_content = $DSP->input_hidden('code_id_'.$row['code_id'], $row['code_id']);
+			$domain_id_content = $DSP->input_hidden('domain_id_'.$row['domain_id'], $row['domain_id']);
 			
-			$code_string_content = $DSP->input_text('code_string_'.$row['code_id'], $row['code_string'], '20', '80', 'input', '');
+			$domain_string_content = $DSP->input_text('domain_string_'.$row['domain_id'], $row['domain_string'], '20', '80', 'input', '');
 			
-			$destination_group_content = $DSP->input_select_header('destination_group_'.$row['code_id'])
+			$destination_group_content = $DSP->input_select_header('destination_group_'.$row['domain_id'])
 				.$this->group_menu($row['destination_group'])
 				.$DSP->input_select_footer();
 			
@@ -506,15 +506,15 @@ class Registration_codes
 			}
 			else
 			{
-				$site_id_content = $DSP->input_select_header('site_id_'.$row['code_id'])
+				$site_id_content = $DSP->input_select_header('site_id_'.$row['domain_id'])
 					.$DSP->input_select_option(0, "All sites", ($row['site_id'] == 0))
 					.$DSP->input_select_option($this->this_site_id, "This site: ".$PREFS->ini('site_label'), ($row['site_id'] == $this->this_site_id))
 					.$DSP->input_select_footer();
 			}
 		
 			$DSP->body .= $DSP->table_row(array(
-				'code_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_id_content, 'align' => 'center'),
-				'code_string' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_string_content),
+				'domain_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $domain_id_content, 'align' => 'center'),
+				'domain_string' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $domain_string_content),
 				'destination_group' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $destination_group_content),
 				'site_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $site_id_content)
 			));
@@ -525,9 +525,9 @@ class Registration_codes
 		
 		$current_zebra_class = $this->zebra_stripe();
 			
-		$code_id_content = "(new)".$DSP->input_hidden('code_id_new', "new");
+		$domain_id_content = "(new)".$DSP->input_hidden('domain_id_new', "new");
 		
-		$code_string_content = $DSP->input_text('code_string_new', '', '20', '80', 'input', '');
+		$domain_string_content = $DSP->input_text('domain_string_new', '', '20', '80', 'input', '');
 		
 		$destination_group_content = $DSP->input_select_header('destination_group_new')
 			.$this->group_menu(0)
@@ -548,8 +548,8 @@ class Registration_codes
 		}
 	
 		$DSP->body .= $DSP->table_row(array(
-			'code_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_id_content, 'align' => 'center'),
-			'code_string' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $code_string_content),
+			'domain_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $domain_id_content, 'align' => 'center'),
+			'domain_string' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $domain_string_content),
 			'destination_group' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $destination_group_content),
 			'site_id' => array('valign' => "middle", 'class' => $current_zebra_class, 'text' => $site_id_content)
 		));	
@@ -610,7 +610,7 @@ class Registration_codes
 		//	Get a local copy of data from database (the "old" dataset)
 		// ---------------------------------------------
 		
-		$query = $DB->query("SELECT * FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.")");
+		$query = $DB->query("SELECT * FROM exp_rogee_reg_restrict WHERE site_id IN (0,".$this->this_site_id.")");
 	
 		if ($query->num_rows > 0)
 		{
@@ -618,13 +618,13 @@ class Registration_codes
 			{
 				
 				$row_data = array(
-					'code_id' => $row['code_id'],
+					'domain_id' => $row['domain_id'],
 					'site_id' => $row['site_id'],
-					'code_string' => $row['code_string'],
+					'domain_string' => $row['domain_string'],
 					'destination_group' => $row['destination_group']
 				);
 				
-				$db_data[ $row['code_id'] ] = $row_data;
+				$db_data[ $row['domain_id'] ] = $row_data;
 	
 			}
 		}
@@ -637,24 +637,24 @@ class Registration_codes
 		foreach($db_data as $row)
 		{
 			
-			$i = $row['code_id'];
+			$i = $row['domain_id'];
 			
 			$new_data_vals = array(
-				'code_id' => $i,
-				'code_string' => (($IN->GBL('code_string_'.$i, 'POST') !== false) ? $IN->GBL('code_string_'.$i, 'POST') : $row['code_string']),
+				'domain_id' => $i,
+				'domain_string' => (($IN->GBL('domain_string_'.$i, 'POST') !== false) ? $IN->GBL('domain_string_'.$i, 'POST') : $row['domain_string']),
 				'destination_group' => (($IN->GBL('destination_group_'.$i, 'POST') !== false) ? $IN->GBL('destination_group_'.$i, 'POST') : $row['destination_group']),
 				'site_id' => (($IN->GBL('site_id_'.$i, 'POST') !== false) ? $IN->GBL('site_id_'.$i, 'POST') : $row['site_id'])
 			);
 			
 			$new_data[$i] = $new_data_vals;
 			
-			if ($new_data_vals['code_string'] === "")
+			if ($new_data_vals['domain_string'] === "")
 			{
 				$deletes[] = $i;
 			}
 			else
 			{
-				$to_do[$i] = $new_data_vals['code_string'];
+				$to_do[$i] = $new_data_vals['domain_string'];
 			}
 
 		}
@@ -665,11 +665,11 @@ class Registration_codes
 
 		if (!empty($deletes))
 		{
-			$DB->query("DELETE FROM exp_rogee_registration_codes WHERE code_id IN (". implode(",", $deletes) .")");
+			$DB->query("DELETE FROM exp_rogee_reg_restrict WHERE domain_id IN (". implode(",", $deletes) .")");
 		}	
 
 		// ---------------------------------------------
-		//	Make a list of duplicate code_string values in the "new" dataset
+		//	Make a list of duplicate domain_string values in the "new" dataset
 		//	(These will be omitted from processing)
 		// ---------------------------------------------
 
@@ -697,9 +697,9 @@ class Registration_codes
 		
 			$changes = array();
 			
-			if ($new_data[$i]['code_string'] != $db_data[$i]['code_string'])
+			if ($new_data[$i]['domain_string'] != $db_data[$i]['domain_string'])
 			{
-				$changes['code_string'] = $new_data[$i]['code_string'];
+				$changes['domain_string'] = $new_data[$i]['domain_string'];
 			}
 			if ($new_data[$i]['destination_group'] != $db_data[$i]['destination_group'])
 			{
@@ -712,7 +712,7 @@ class Registration_codes
 			
 			if (!empty($changes))
 			{
-				$DB->query($DB->update_string('exp_rogee_registration_codes', $changes, array('code_id' => $i)));
+				$DB->query($DB->update_string('exp_rogee_reg_restrict', $changes, array('domain_id' => $i)));
 			}
 			
 		}
@@ -721,20 +721,20 @@ class Registration_codes
 		//	Add a new code, if one is supplied (and it is not a dupe)
 		// ---------------------------------------------		
 
-		if ($IN->GBL('code_string_new', 'POST') != "")
+		if ($IN->GBL('domain_string_new', 'POST') != "")
 		{	
 		
 			$i = 'new';
 			
 			$new_data_vals = array(
-				'code_string' => $IN->GBL('code_string_'.$i, 'POST'),
+				'domain_string' => $IN->GBL('domain_string_'.$i, 'POST'),
 				'destination_group' => (($IN->GBL('destination_group_'.$i, 'POST') !== false) ? $IN->GBL('destination_group_'.$i, 'POST') : 0),
 				'site_id' => (($IN->GBL('site_id_'.$i, 'POST') !== false) ? $IN->GBL('site_id_'.$i, 'POST') : 0)
 			);
 			
-			if (!in_array($new_data_vals['code_string'], $dupes) AND !in_array($new_data_vals['code_string'], $to_do))
+			if (!in_array($new_data_vals['domain_string'], $dupes) AND !in_array($new_data_vals['domain_string'], $to_do))
 			{
-				$DB->query($DB->insert_string('exp_rogee_registration_codes', $new_data_vals));
+				$DB->query($DB->insert_string('exp_rogee_reg_restrict', $new_data_vals));
 			}
 			else
 			{
@@ -767,13 +767,13 @@ class Registration_codes
 	* and returns an error if the registration code isn't valid.
 	*
 	*/
-	function validate_registration_code()
+	function validate_registration_domain()
 	{
 
 		global $IN, $DB;
 
 		// ---------------------------------------------
-		//	We only care about this function if we require a valid code for registration.
+		//	We only care about this function if we require a valid domain for registration.
 		// ---------------------------------------------
 		if ($this->settings['require_valid_code'] == 'n')
 		{
@@ -810,13 +810,13 @@ class Registration_codes
 
 			$code_list = array();
 			
-			$query = $DB->query("SELECT code_string FROM exp_rogee_registration_codes WHERE site_id IN (0,".$this->this_site_id.")");		
+			$query = $DB->query("SELECT domain_string FROM exp_rogee_reg_restrict WHERE site_id IN (0,".$this->this_site_id.")");		
 
 			if ($query->num_rows > 0)
 			{
 				foreach($query->result as $row)
 				{	
-					$code_list[] = $row['code_string'];
+					$code_list[] = $row['domain_string'];
 				}
 			}		
 
@@ -829,7 +829,7 @@ class Registration_codes
 			}
 			else
 			{
-				$this->debug_log("Validation: Not a valid code: ".$submitted_code);			
+				$this->debug_log("Validation: Not a valid domain: ".$submitted_code);			
 			}
 
 		}
@@ -846,7 +846,7 @@ class Registration_codes
 		}
 
 	}
-	// END validate_registration_code()
+	// END validate_registration_domain()
 
 
 
@@ -863,7 +863,7 @@ class Registration_codes
 	* @param $member_id mixed: false by default, hoping for an int
 	*
 	*/
-	function execute_registration_code($data, $member_id=false)
+	function execute_registration_domain($data, $member_id=false)
 	{
 
 		global $IN, $DB;
@@ -896,9 +896,9 @@ class Registration_codes
 			$this->debug_log("Execution: Submitted code: ".$submitted_code);
 			
 			$query = $DB->query(
-				"SELECT * FROM exp_rogee_registration_codes
+				"SELECT * FROM exp_rogee_reg_restrict
 				WHERE site_id IN (0,".$this->this_site_id.")
-				AND code_string = '".$submitted_code."' LIMIT 1"
+				AND domain_string = '".$submitted_code."' LIMIT 1"
 				);		
 
 			if ($query->num_rows == 1)
@@ -931,7 +931,7 @@ class Registration_codes
 						$DB->update_string('exp_members', array('group_id' => $destination_group), $search_param)
 					);
 					
-					$this->debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['code_string'].")");
+					$this->debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['domain_string'].")");
 					
 				}
 				else
@@ -952,7 +952,7 @@ class Registration_codes
 		}
 		
 	}
-	// END execute_registration_code()
+	// END execute_registration_domain()
 	
 
 
@@ -963,16 +963,16 @@ class Registration_codes
 	*
 	* This method runs when a new member registration is performed through the Solspace User module.
 	* It intercepts the Solspace hook data, transforms it into the format supplied by the EE hook,
-	* and forwards it to the normal execute_registration_code hook function.
+	* and forwards it to the normal execute_registration_domain hook function.
 	*
 	* @param $data Object: the User object
 	* @param $member_id int: the member_id from the User
 	*
 	*/
-	function execute_registration_code_solspace($data, $id='false') {
+	function execute_registration_domain_solspace($data, $id='false') {
 
 		// ---------------------------------------------
-		// execute_registration_code() is expecting:
+		// execute_registration_domain() is expecting:
 		// - $data: an array containing ['username'] and ['group_id']
 		// - $id: the numeric member_id
 		// ---------------------------------------------
@@ -987,10 +987,10 @@ class Registration_codes
 			'group_id' => $g
 		);
 
-		$this->execute_registration_code($return_data, $id);
+		$this->execute_registration_domain($return_data, $id);
 		
 	}
-	// END execute_registration_code_solspace()
+	// END execute_registration_domain_solspace()
 
 
 
@@ -1167,5 +1167,5 @@ class Registration_codes
 }
 // END CLASS
 
-/* End of file ext.registration_codes.php */
-/* Location: ./system/extensions/ext.registration_codes.php */
+/* End of file ext.reg_restrict.php */
+/* Location: ./system/extensions/ext.reg_restrict.php */
