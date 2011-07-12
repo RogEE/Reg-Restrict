@@ -114,8 +114,8 @@ class Reg_restrict
 		// ---------------------------------------------
 		
 		$settings =	array();
-		$settings['require_valid_code'] = 'n';
-		$settings['form_field'] = 'registration_domain';
+		$settings['require_valid_domain'] = 'n';
+		$settings['form_field'] = 'email';
 		$settings['bypass_enabled'] = 'n';
 		$settings['bypass_code'] = '';
 		$settings['bypass_form_field'] = '';
@@ -396,9 +396,9 @@ class Reg_restrict
 	              
 		$DSP->body .= $DSP->div('itemWrapper')
 			.$DSP->qdiv('itemTitle', "Require valid domain to register?")
-			.$DSP->input_select_header('require_valid_code')
-			.$DSP->input_select_option('y', $LANG->line('yes'), ($current['require_valid_code'] == 'y'))
-			.$DSP->input_select_option('n', $LANG->line('no'), ($current['require_valid_code'] == 'n'))
+			.$DSP->input_select_header('require_valid_domain')
+			.$DSP->input_select_option('y', $LANG->line('yes'), ($current['require_valid_domain'] == 'y'))
+			.$DSP->input_select_option('n', $LANG->line('no'), ($current['require_valid_domain'] == 'n'))
 			.$DSP->input_select_footer()
 			.$DSP->div_c();
 	
@@ -441,7 +441,7 @@ class Reg_restrict
 		$DSP->body .= "<br />";
 	
 		// ---------------------------------------------
-		//	Registration codes
+		//	Registration domains
 		// ---------------------------------------------	
 		
 		// Get registration_domain data from the database
@@ -478,7 +478,7 @@ class Reg_restrict
 		
 		$DSP->body .= $DSP->table_row(array(
 			'cell1' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "", 'width' => "7%"),
-			'cell2' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "Registration code", 'width'  => "40%"),
+			'cell2' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "Registration domain", 'width'  => "40%"),
 			'cell3' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "Destination group", 'width'  => "30%"),
 			'cell4' => array('valign' => "middle", 'class' => 'tableHeadingAlt', 'text' => "Site", 'width'  => "33%")
 		));
@@ -574,7 +574,7 @@ class Reg_restrict
 	* ==============================================
 	*
 	* Processes general settings (serializes the array and updates database rows
-	* AND processes registration codes (compares POST values with current database rows, updates table)
+	* AND processes registration domains (compares POST values with current database rows, updates table)
 	*
 	*/
 	function save_settings()
@@ -587,11 +587,11 @@ class Reg_restrict
 		// ---------------------------------------------
 		
 		$new_settings = array();
-		$new_settings['require_valid_code'] = ($IN->GBL('require_valid_code', 'POST') ? $IN->GBL('require_valid_code', 'POST') : $this->settings['require_valid_code']);
-		$new_settings['form_field'] = ($IN->GBL('form_field', 'POST') ? $this->clean_string($IN->GBL('form_field', 'POST'), true) : $this->settings['form_field']);
-		$new_settings['bypass_enabled'] = ($IN->GBL('bypass_enabled', 'POST') ? $IN->GBL('bypass_enabled', 'POST') : $this->settings['bypass_enabled']);
-		$new_settings['bypass_code'] = ($IN->GBL('bypass_code', 'POST') ? $this->clean_string($IN->GBL('bypass_code', 'POST')) : $this->settings['bypass_code']);
-		$new_settings['bypass_form_field'] = ($IN->GBL('bypass_form_field', 'POST') ? $this->clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
+		$new_settings['require_valid_domain'] = (($IN->GBL('require_valid_domain', 'POST') !== FALSE) ? $IN->GBL('require_valid_domain', 'POST') : $this->settings['require_valid_domain']);
+		$new_settings['form_field'] = (($IN->GBL('form_field', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('form_field', 'POST'), true) : $this->settings['form_field']);
+		$new_settings['bypass_enabled'] = (($IN->GBL('bypass_enabled', 'POST') !== FALSE) ? $IN->GBL('bypass_enabled', 'POST') : $this->settings['bypass_enabled']);
+		$new_settings['bypass_code'] = (($IN->GBL('bypass_code', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('bypass_code', 'POST')) : $this->settings['bypass_code']);
+		$new_settings['bypass_form_field'] = (($IN->GBL('bypass_form_field', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
 		$this->settings = $new_settings;
 		
 		$DB->query($DB->update_string('exp_extensions', array('settings' => serialize($new_settings)), array('class' => __CLASS__)));
@@ -660,7 +660,7 @@ class Reg_restrict
 		}
 		
 		// ---------------------------------------------
-		//	Delete the codes that were left blank
+		//	Delete the domains that were left blank
 		// ---------------------------------------------
 
 		if (!empty($deletes))
@@ -673,13 +673,13 @@ class Reg_restrict
 		//	(These will be omitted from processing)
 		// ---------------------------------------------
 
-		$code_counts = array_count_values($to_do);
+		$domain_counts = array_count_values($to_do);
 		
-		foreach($code_counts as $code => $count)
+		foreach($domain_counts as $domain => $count)
 		{
 			if ($count > 1)
 			{
-				$dupes[] = $code;
+				$dupes[] = $domain;
 			}
 		}
 		
@@ -692,7 +692,7 @@ class Reg_restrict
 		//	wherever the new dataset (sans dupes) is different from the old
 		// ---------------------------------------------
 		
-		foreach ($to_do as $i => $code)
+		foreach ($to_do as $i => $domain)
 		{
 		
 			$changes = array();
@@ -718,7 +718,7 @@ class Reg_restrict
 		}
 
 		// ---------------------------------------------
-		//	Add a new code, if one is supplied (and it is not a dupe)
+		//	Add a new domain, if one is supplied (and it is not a dupe)
 		// ---------------------------------------------		
 
 		if ($IN->GBL('domain_string_new', 'POST') != "")
@@ -760,11 +760,11 @@ class Reg_restrict
 
 	/**
 	* ==============================================
-	* Validate registration code
+	* Validate registration domain
 	* ==============================================
 	*
 	* This method runs before a new member registration is processed
-	* and returns an error if the registration code isn't valid.
+	* and returns an error if the registration domain isn't valid.
 	*
 	*/
 	function validate_registration_domain()
@@ -775,14 +775,14 @@ class Reg_restrict
 		// ---------------------------------------------
 		//	We only care about this function if we require a valid domain for registration.
 		// ---------------------------------------------
-		if ($this->settings['require_valid_code'] == 'n')
+		if ($this->settings['require_valid_domain'] == 'n')
 		{
-			$this->debug_log("Validation: Skipping validation (Valid code not required)");
+			$this->debug_log("Validation: Skipping validation (Valid domain not required)");
 			return;
 		}
 		
 		// ---------------------------------------------
-		//	Also, we can bypass the extension by providing the override code in the POST data.
+		//	Also, we can bypass the extension by providing the override domain in the POST data.
 		// ---------------------------------------------
 		
 		if ($this->settings['bypass_enabled'] == 'y')
@@ -803,12 +803,12 @@ class Reg_restrict
 		
 		$match = false;
 		
-		$submitted_code = $IN->GBL($this->settings['form_field'], 'POST');
+		$submitted_domain = $IN->GBL($this->settings['form_field'], 'POST');
 		
-		if ($submitted_code !== false)
+		if ($submitted_domain !== false)
 		{
 
-			$code_list = array();
+			$domain_list = array();
 			
 			$query = $DB->query("SELECT domain_string FROM exp_rogee_reg_restrict WHERE site_id IN (0,".$this->this_site_id.")");		
 
@@ -816,32 +816,32 @@ class Reg_restrict
 			{
 				foreach($query->result as $row)
 				{	
-					$code_list[] = $row['domain_string'];
+					$domain_list[] = $row['domain_string'];
 				}
 			}		
 
-			if (in_array($submitted_code, $code_list))
+			if (in_array($submitted_domain, $domain_list))
 			{
 				// woohooo!
 				$match = true;
 				
-				$this->debug_log("Validation: Validated code: ".$submitted_code);			
+				$this->debug_log("Validation: Validated domain: ".$submitted_domain);			
 			}
 			else
 			{
-				$this->debug_log("Validation: Not a valid domain: ".$submitted_code);			
+				$this->debug_log("Validation: Not a valid domain: ".$submitted_domain);			
 			}
 
 		}
 		else
 		{
-			$this->debug_log("Validation: No code submitted");
+			$this->debug_log("Validation: No domain submitted");
 		}
 	
 		if (!$match)
 		{
 			global $OUT;
-			$errors = array("You must supply a valid registration code.");
+			$errors = array("You must register with an email address from an approved domain.");
 			return $OUT->show_user_error('submission', $errors);
 		}
 
@@ -852,12 +852,12 @@ class Reg_restrict
 
 	/**
 	* ==============================================
-	* Execute registration code
+	* Execute registration domain
 	* ==============================================
 	*
 	* This method runs when a new member registration is complete
 	* and moves the new member to an appropriate group
-	* if they have provided a valid registration code.
+	* if they have provided a valid registration domain.
 	*
 	* @param $data Array: member data from EE
 	* @param $member_id mixed: false by default, hoping for an int
@@ -885,27 +885,27 @@ class Reg_restrict
 		}
 
 		// ---------------------------------------------
-		//	Check to see if there's a code match
+		//	Check to see if there's a domain match
 		// ---------------------------------------------
 		
-		$submitted_code = $IN->GBL($this->settings['form_field'], 'POST');		
+		$submitted_domain = $IN->GBL($this->settings['form_field'], 'POST');		
 		
-		if ($submitted_code !== false)
+		if ($submitted_domain !== false)
 		{
 			
-			$this->debug_log("Execution: Submitted code: ".$submitted_code);
+			$this->debug_log("Execution: Submitted domain: ".$submitted_domain);
 			
 			$query = $DB->query(
 				"SELECT * FROM exp_rogee_reg_restrict
 				WHERE site_id IN (0,".$this->this_site_id.")
-				AND domain_string = '".$submitted_code."' LIMIT 1"
+				AND domain_string = '".$submitted_domain."' LIMIT 1"
 				);		
 
 			if ($query->num_rows == 1)
 			{
 				
 				// Woohoo! Match!
-				$this->debug_log("Execution: Matched code: ".$submitted_code);
+				$this->debug_log("Execution: Matched domain: ".$submitted_domain);
 				
 				$destination_group = $query->row['destination_group'];
 				
@@ -948,7 +948,7 @@ class Reg_restrict
 		}
 		else
 		{
-			$this->debug_log("Execution: No registration code submitted");
+			$this->debug_log("Execution: No registration domain submitted");
 		}
 		
 	}
@@ -958,7 +958,7 @@ class Reg_restrict
 
 	/**
 	* ==============================================
-	* Execute registration code on Solspace User Hook
+	* Execute registration domain on Solspace User Hook
 	* ==============================================
 	*
 	* This method runs when a new member registration is performed through the Solspace User module.
