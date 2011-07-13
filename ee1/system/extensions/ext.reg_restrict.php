@@ -47,7 +47,7 @@ class Reg_restrict
     // ---------------------------------------------
     
 	var $settings = array();
-	var $dev_on = FALSE;
+	var $dev_on = TRUE;
 	var $nuke_log_on_uninstall = FALSE;
 
 	// ---------------------------------------------
@@ -127,7 +127,6 @@ class Reg_restrict
 		
 		$hooks = array(
 			array(
-				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'member_member_register_start',
 				'method' => 'validate_registration_domain',
@@ -137,7 +136,6 @@ class Reg_restrict
 				'enabled' => 'y'
 			),
 			array(
-				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'user_register_start',
 				'method' => 'validate_registration_domain',
@@ -147,7 +145,6 @@ class Reg_restrict
 				'enabled' => 'y'
 			),			
 			array(
-				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'member_member_register',
 				'method' => 'execute_registration_domain',
@@ -157,7 +154,6 @@ class Reg_restrict
 				'enabled' => 'y'
 			),
 			array(
-				'extension_id' => '',
 				'class' => __CLASS__,
 				'hook' => 'user_register_end',
 				'method' => 'execute_registration_domain_solspace',
@@ -165,7 +161,16 @@ class Reg_restrict
 				'priority' => 5,
 				'version' => $this->version,
 				'enabled' => 'y'
-			)		
+			),
+			array(
+				'class' => __CLASS__,
+				'hook' => 'member_register_validate_members',
+				'method' => 'execute_registration_domain_self_validation',
+				'settings' => serialize($settings),
+				'priority' => 5,
+				'version' => $this->version,
+				'enabled' => 'y'
+			)
 		);
 	
 		// ---------------------------------------------
@@ -803,7 +808,7 @@ class Reg_restrict
 		
 		$match = false;
 		
-		$submitted_domain = $IN->GBL($this->settings['form_field'], 'POST');
+		$submitted_domain = $this->_get_domain();
 		
 		if ($submitted_domain !== false)
 		{
@@ -811,7 +816,6 @@ class Reg_restrict
 			$domain_list = array();
 			
 			$query = $DB->query("SELECT domain_string FROM exp_rogee_reg_restrict WHERE site_id IN (0,".$this->this_site_id.")");		
-
 			if ($query->num_rows > 0)
 			{
 				foreach($query->result as $row)
@@ -848,7 +852,7 @@ class Reg_restrict
 	}
 	// END validate_registration_domain()
 
-
+	
 
 	/**
 	* ==============================================
@@ -863,10 +867,10 @@ class Reg_restrict
 	* @param $member_id mixed: false by default, hoping for an int
 	*
 	*/
-	function execute_registration_domain($data, $member_id=false)
+	function execute_registration_domain($data, $member_id=FALSE)
 	{
-
-		global $IN, $DB;
+/*
+		global $IN, $DB, $PREFS;
 		
 		// ---------------------------------------------
 		//	Skip this business if the bypass code is present...
@@ -880,20 +884,29 @@ class Reg_restrict
 			)
 			{
 				$this->debug_log("Execution: Bypassed");
-				return;
+				return($data);
 			}
+		}
+		
+		// ---------------------------------------------
+		//	If members are self-validating, we'll defer moving them until then...
+		// ---------------------------------------------
+		
+		if ($PREFS->ini('req_mbr_activation') != 'email')
+		{
+			return($data);
 		}
 
 		// ---------------------------------------------
 		//	Check to see if there's a domain match
 		// ---------------------------------------------
 		
-		$submitted_domain = $IN->GBL($this->settings['form_field'], 'POST');		
+		$this->debug_log("Execution: Submitted email: ".$IN->GBL($this->settings['form_field'], 'POST'));
+		
+		$submitted_domain = $this->_get_domain();		
 		
 		if ($submitted_domain !== false)
 		{
-			
-			$this->debug_log("Execution: Submitted domain: ".$submitted_domain);
 			
 			$query = $DB->query(
 				"SELECT * FROM exp_rogee_reg_restrict
@@ -950,10 +963,12 @@ class Reg_restrict
 		{
 			$this->debug_log("Execution: No registration domain submitted");
 		}
+*/		
+		return($data);
 		
 	}
 	// END execute_registration_domain()
-	
+
 
 
 	/**
@@ -969,7 +984,7 @@ class Reg_restrict
 	* @param $member_id int: the member_id from the User
 	*
 	*/
-	function execute_registration_domain_solspace($data, $id='false') {
+	function execute_registration_domain_solspace($data, $id=FALSE) {
 
 		// ---------------------------------------------
 		// execute_registration_domain() is expecting:
@@ -982,15 +997,135 @@ class Reg_restrict
 		$u = (isset($data->insert_data['username']) ? $data->insert_data['username'] : "");
 		$g = (isset($data->insert_data['group_id']) ? $data->insert_data['group_id'] : 0);
 		
-		$return_data = array(
+		$new_data = array(
 			'username' => $u,
 			'group_id' => $g
 		);
 
-		$this->execute_registration_domain($return_data, $id);
+		return $this->execute_registration_domain($new_data, $id);
 		
 	}
 	// END execute_registration_domain_solspace()
+	
+
+
+	/**
+	* ==============================================
+	* Execute registration domain on self-validation
+	* ==============================================
+	*
+	* This method runs when a new member registration self-validates by email
+	* and moves the new member to an appropriate group
+	* if their registered email address is from a valid domain.
+	*
+	* @param $member_id int: member_id from self-validation hook
+	*
+	*/
+	function execute_registration_domain_self_validation($member_id)
+	{
+/*
+		global $DB, $PREFS;
+
+		// ---------------------------------------------
+		//	Check to see if the user still exists,
+		//	and if they are still in the Pending group
+		// ---------------------------------------------
+		
+		$query = $DB->query(
+			"SELECT * FROM exp_members
+			WHERE member_id = ".$this->this_site_id
+			);		
+
+		if ($query->num_rows == 1)
+		{
+		
+			// ---------------------------------------------
+			//	If they've already been moved out of the pending group,
+			//	no need to mess with them.
+			// ---------------------------------------------
+			
+			if ($query->row['group_id'] != 4)
+			{
+				return $member_id;
+			}
+			else
+			{
+				$current_group = $query->row['group_id'];
+				$current_email = $query->row['email'];
+			}
+			
+		}
+		else
+		{
+			return $member_id;
+		}
+		
+		$this->debug_log("Execution: Self-validation from email: ".$current_email);
+		
+		$submitted_domain = $this->_get_domain($current_email);
+		
+		if ($submitted_domain != FALSE)
+		{
+			
+			$query = $DB->query(
+				"SELECT * FROM exp_rogee_reg_restrict
+				WHERE site_id IN (0,".$this->this_site_id.")
+				AND domain_string = '".$submitted_domain."' LIMIT 1"
+				);		
+
+			if ($query->num_rows == 1)
+			{
+				
+				// Woohoo! Match!
+				$this->debug_log("Execution: Matched domain: ".$submitted_domain);
+				
+				$destination_group = $query->row['destination_group'];
+				
+				// ---------------------------------------------
+				//	If they're not already in the intended destination group, move them.
+				//	UNLESS the destination group is 0, in which case we move them to the default group...
+				// ---------------------------------------------
+				
+				if ($destination_group == 0)
+				{
+					$destination_group = $PREFS->ini('default_member_group');
+				}
+				
+				if ($destination_group != $current_group)
+				{
+					
+					$search_param = array('member_id' => $member_id);
+					
+					$DB->query(
+						$DB->update_string('exp_members', array('group_id' => $destination_group), $search_param)
+					);
+					
+					$this->debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['domain_string'].")");
+					
+				}
+				else
+				{
+					$this->debug_log("Execution: Member ".$u." is already in group ".$g);
+				}
+				
+			}
+			else
+			{
+				$this->debug_log("Execution: No match");
+			}
+
+		}
+		else
+		{
+			$this->debug_log("Execution: No email record to validate");
+		}
+*/
+		
+		return $member_id;
+		
+	}
+	// END execute_registration_domain_member_self_validation()
+
 
 
 
@@ -1007,6 +1142,62 @@ class Reg_restrict
 	}
 	// END hook_test()
 	
+
+	/**
+	 * ==============================================
+	 * Get domain
+	 * ==============================================
+	 *
+	 * Returns the domain of the email address (from the param, or from POST data)
+	 *
+	 * @access private
+	 * @return string
+	 *
+	 */
+	private function _get_domain($email_address = FALSE)
+	{
+
+		global $IN;
+		
+		// ---------------------------------------------
+		//	If I give you an email address, use it. Otherwise, try to find one in the POST data.
+		// ---------------------------------------------
+	
+		if (!$email_address)
+		{
+			$email_address = $IN->GBL($this->settings['form_field'], 'POST');
+		}
+		
+		// ---------------------------------------------
+		//	If we now have an email address, get (and return) the domain portion
+		// ---------------------------------------------
+		
+		if ($email_address)
+		{
+
+			$this->debug_log("Splitting email: ".$email_address);
+
+			// ---------------------------------------------
+			//	Exploderate the email address
+			// ---------------------------------------------
+
+			$email_split = explode("@", $email_address, 2);
+			
+			$this->debug_log("Domain is: ".$email_split[1]);
+			
+			return $email_split[1];
+			
+		}
+		
+		// ---------------------------------------------
+		//	Otherwise, no dice.
+		// ---------------------------------------------
+
+		return $email_address ;
+			
+	}
+	// END _get_domain()
+
 
 
 	/**
@@ -1134,7 +1325,7 @@ class Reg_restrict
 	*/
 	private function debug_log($debug_statement = "")
 	{
-		
+			
 		if ($this->dev_on)
 		{
 			
