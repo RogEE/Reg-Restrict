@@ -202,7 +202,7 @@ class Reg_restrict
 		//	Log that the extension has been activated
 		// ---------------------------------------------
 		
-		$this->debug_log("Activated: " . $this->version);
+		$this->_debug_log("Activated: " . $this->version);
 		
 	}
 	// END activate_extension()
@@ -280,7 +280,7 @@ class Reg_restrict
 		//	Log that the extension has been deactivated
 		// ---------------------------------------------
 		
-		$this->debug_log("Deactivated.");
+		$this->_debug_log("Deactivated.");
 		
 		// ---------------------------------------------
 		//	Nuke the log table (if switch is set)
@@ -309,7 +309,7 @@ class Reg_restrict
 		
 		global $PREFS, $DB, $DSP, $LANG, $IN;
 		
-		$this->debug_log("Settings form.");
+		$this->_debug_log("Settings form.");
 		
 		// ---------------------------------------------
 		//	Breadcrumb nav
@@ -493,14 +493,14 @@ class Reg_restrict
 		foreach($registration_domain_data as $row)
 		{
 	
-			$current_zebra_class = $this->zebra_stripe();
+			$current_zebra_class = $this->_zebra_stripe();
 			
 			$domain_id_content = $DSP->input_hidden('domain_id_'.$row['domain_id'], $row['domain_id']);
 			
 			$domain_string_content = $DSP->input_text('domain_string_'.$row['domain_id'], $row['domain_string'], '20', '80', 'input', '');
 			
 			$destination_group_content = $DSP->input_select_header('destination_group_'.$row['domain_id'])
-				.$this->group_menu($row['destination_group'])
+				.$this->_group_menu($row['destination_group'])
 				.$DSP->input_select_footer();
 			
 			$site_id_content = "";
@@ -528,14 +528,14 @@ class Reg_restrict
 		
 		// Form field rows for NEW CODE
 		
-		$current_zebra_class = $this->zebra_stripe();
+		$current_zebra_class = $this->_zebra_stripe();
 			
 		$domain_id_content = "(new)".$DSP->input_hidden('domain_id_new', "new");
 		
 		$domain_string_content = $DSP->input_text('domain_string_new', '', '20', '80', 'input', '');
 		
 		$destination_group_content = $DSP->input_select_header('destination_group_new')
-			.$this->group_menu(0)
+			.$this->_group_menu(0)
 			.$DSP->input_select_footer();
 		
 		$site_id_content = "";
@@ -593,10 +593,10 @@ class Reg_restrict
 		
 		$new_settings = array();
 		$new_settings['require_valid_domain'] = (($IN->GBL('require_valid_domain', 'POST') !== FALSE) ? $IN->GBL('require_valid_domain', 'POST') : $this->settings['require_valid_domain']);
-		$new_settings['form_field'] = (($IN->GBL('form_field', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('form_field', 'POST'), true) : $this->settings['form_field']);
+		$new_settings['form_field'] = (($IN->GBL('form_field', 'POST') !== FALSE) ? $this->_clean_string($IN->GBL('form_field', 'POST'), true) : $this->settings['form_field']);
 		$new_settings['bypass_enabled'] = (($IN->GBL('bypass_enabled', 'POST') !== FALSE) ? $IN->GBL('bypass_enabled', 'POST') : $this->settings['bypass_enabled']);
-		$new_settings['bypass_code'] = (($IN->GBL('bypass_code', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('bypass_code', 'POST')) : $this->settings['bypass_code']);
-		$new_settings['bypass_form_field'] = (($IN->GBL('bypass_form_field', 'POST') !== FALSE) ? $this->clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
+		$new_settings['bypass_code'] = (($IN->GBL('bypass_code', 'POST') !== FALSE) ? $this->_clean_string($IN->GBL('bypass_code', 'POST')) : $this->settings['bypass_code']);
+		$new_settings['bypass_form_field'] = (($IN->GBL('bypass_form_field', 'POST') !== FALSE) ? $this->_clean_string($IN->GBL('bypass_form_field', 'POST'), true) : $this->settings['bypass_form_field']);
 		$this->settings = $new_settings;
 		
 		$DB->query($DB->update_string('exp_extensions', array('settings' => serialize($new_settings)), array('class' => __CLASS__)));
@@ -782,7 +782,7 @@ class Reg_restrict
 		// ---------------------------------------------
 		if ($this->settings['require_valid_domain'] == 'n')
 		{
-			$this->debug_log("Validation: Skipping validation (Valid domain not required)");
+			$this->_debug_log("Validation: Skipping validation (Valid domain not required)");
 			return;
 		}
 		
@@ -797,7 +797,7 @@ class Reg_restrict
 				AND $IN->GBL($this->settings['bypass_form_field'], 'POST') == $this->settings['bypass_code']
 			)
 			{
-				$this->debug_log("Validation: Bypassed");
+				$this->_debug_log("Validation: Bypassed");
 				return;
 			}
 		}
@@ -829,17 +829,17 @@ class Reg_restrict
 				// woohooo!
 				$match = true;
 				
-				$this->debug_log("Validation: Validated domain: ".$submitted_domain);			
+				$this->_debug_log("Validation: Validated domain: ".$submitted_domain);			
 			}
 			else
 			{
-				$this->debug_log("Validation: Not a valid domain: ".$submitted_domain);			
+				$this->_debug_log("Validation: Not a valid domain: ".$submitted_domain);			
 			}
 
 		}
 		else
 		{
-			$this->debug_log("Validation: No domain submitted");
+			$this->_debug_log("Validation: No domain submitted");
 		}
 	
 		if (!$match)
@@ -883,7 +883,7 @@ class Reg_restrict
 				AND $IN->GBL($this->settings['bypass_form_field'], 'POST') == $this->settings['bypass_code']
 			)
 			{
-				$this->debug_log("Execution: Bypassed");
+				$this->_debug_log("Execution: Bypassed");
 				return($data);
 			}
 		}
@@ -901,7 +901,7 @@ class Reg_restrict
 		//	Check to see if there's a domain match
 		// ---------------------------------------------
 		
-		$this->debug_log("Execution: Submitted email: ".$IN->GBL($this->settings['form_field'], 'POST'));
+		$this->_debug_log("Execution: Submitted email: ".$IN->GBL($this->settings['form_field'], 'POST'));
 		
 		$submitted_domain = $this->_get_domain();		
 		
@@ -918,7 +918,7 @@ class Reg_restrict
 			{
 				
 				// Woohoo! Match!
-				$this->debug_log("Execution: Matched domain: ".$submitted_domain);
+				$this->_debug_log("Execution: Matched domain: ".$submitted_domain);
 				
 				$destination_group = $query->row['destination_group'];
 				
@@ -944,24 +944,24 @@ class Reg_restrict
 						$DB->update_string('exp_members', array('group_id' => $destination_group), $search_param)
 					);
 					
-					$this->debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['domain_string'].")");
+					$this->_debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['domain_string'].")");
 					
 				}
 				else
 				{
-					$this->debug_log("Execution: Member ".$u." is already in group ".$g);
+					$this->_debug_log("Execution: Member ".$u." is already in group ".$g);
 				}
 				
 			}
 			else
 			{
-				$this->debug_log("Execution: No match");
+				$this->_debug_log("Execution: No match");
 			}
 
 		}
 		else
 		{
-			$this->debug_log("Execution: No registration domain submitted");
+			$this->_debug_log("Execution: No registration domain submitted");
 		}
 */		
 		return($data);
@@ -992,7 +992,7 @@ class Reg_restrict
 		// - $id: the numeric member_id
 		// ---------------------------------------------
 		
-		$this->debug_log("Solspace hook: Re-arranging data...");
+		$this->_debug_log("Solspace hook: Re-arranging data...");
 		
 		$u = (isset($data->insert_data['username']) ? $data->insert_data['username'] : "");
 		$g = (isset($data->insert_data['group_id']) ? $data->insert_data['group_id'] : 0);
@@ -1060,7 +1060,7 @@ class Reg_restrict
 			return $member_id;
 		}
 		
-		$this->debug_log("Execution: Self-validation from email: ".$current_email);
+		$this->_debug_log("Execution: Self-validation from email: ".$current_email);
 		
 		$submitted_domain = $this->_get_domain($current_email);
 		
@@ -1077,7 +1077,7 @@ class Reg_restrict
 			{
 				
 				// Woohoo! Match!
-				$this->debug_log("Execution: Matched domain: ".$submitted_domain);
+				$this->_debug_log("Execution: Matched domain: ".$submitted_domain);
 				
 				$destination_group = $query->row['destination_group'];
 				
@@ -1100,24 +1100,24 @@ class Reg_restrict
 						$DB->update_string('exp_members', array('group_id' => $destination_group), $search_param)
 					);
 					
-					$this->debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['domain_string'].")");
+					$this->_debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['domain_string'].")");
 					
 				}
 				else
 				{
-					$this->debug_log("Execution: Member ".$u." is already in group ".$g);
+					$this->_debug_log("Execution: Member ".$u." is already in group ".$g);
 				}
 				
 			}
 			else
 			{
-				$this->debug_log("Execution: No match");
+				$this->_debug_log("Execution: No match");
 			}
 
 		}
 		else
 		{
-			$this->debug_log("Execution: No email record to validate");
+			$this->_debug_log("Execution: No email record to validate");
 		}
 */
 		
@@ -1137,7 +1137,7 @@ class Reg_restrict
 	*/
 	function test_hook($str) {
 	
-		$this->debug_log("Hook test.");
+		$this->_debug_log("Hook test.");
 		
 	}
 	// END hook_test()
@@ -1175,7 +1175,7 @@ class Reg_restrict
 		if ($email_address)
 		{
 
-			$this->debug_log("Splitting email: ".$email_address);
+			$this->_debug_log("Splitting email: ".$email_address);
 
 			// ---------------------------------------------
 			//	Exploderate the email address
@@ -1183,7 +1183,7 @@ class Reg_restrict
 
 			$email_split = explode("@", $email_address, 2);
 			
-			$this->debug_log("Domain is: ".$email_split[1]);
+			$this->_debug_log("Domain is: ".$email_split[1]);
 			
 			return $email_split[1];
 			
@@ -1212,7 +1212,7 @@ class Reg_restrict
 	* @return string: HTML for select menu OPTIONS
 	*
 	*/
-	private function group_menu($selected = 0) {
+	private function _group_menu($selected = 0) {
 		
 		global $DB, $DSP;
 		
@@ -1263,7 +1263,7 @@ class Reg_restrict
 	* @return string: table cell class name
 	*
 	*/
-	private function zebra_stripe() {
+	private function _zebra_stripe() {
 		
 		switch ($this->zebra_class) {
 			case "":
@@ -1298,7 +1298,7 @@ class Reg_restrict
 	* @see http://cubiq.org/the-perfect-php-clean-url-generator
 	*
 	*/
-	private function clean_string($str='', $remove_spaces=false) {
+	private function _clean_string($str='', $remove_spaces=false) {
 	
 		$clean = preg_replace("/[^a-zA-Z0-9\/_| -]/", '', $str);
 		$clean = trim($clean, '-');
@@ -1323,7 +1323,7 @@ class Reg_restrict
 	* @return mixed: parameter (default: blank string)
 	*
 	*/
-	private function debug_log($debug_statement = "")
+	private function _debug_log($debug_statement = "")
 	{
 			
 		if ($this->dev_on)
