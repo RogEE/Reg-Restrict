@@ -869,7 +869,7 @@ class Reg_restrict
 	*/
 	function execute_registration_domain($data, $member_id=FALSE)
 	{
-/*
+
 		global $IN, $DB, $PREFS;
 		
 		// ---------------------------------------------
@@ -892,8 +892,9 @@ class Reg_restrict
 		//	If members are self-validating, we'll defer moving them until then...
 		// ---------------------------------------------
 		
-		if ($PREFS->ini('req_mbr_activation') != 'email')
+		if ($PREFS->ini('req_mbr_activation') == 'email')
 		{
+			$this->_debug_log("Execution: Deferred to email self-validation");
 			return($data);
 		}
 
@@ -963,7 +964,7 @@ class Reg_restrict
 		{
 			$this->_debug_log("Execution: No registration domain submitted");
 		}
-*/		
+	
 		return($data);
 		
 	}
@@ -984,7 +985,7 @@ class Reg_restrict
 	* @param $member_id int: the member_id from the User
 	*
 	*/
-	function execute_registration_domain_solspace($data, $id=FALSE) {
+	function execute_registration_domain_solspace($data, $id) {
 
 		// ---------------------------------------------
 		// execute_registration_domain() is expecting:
@@ -1001,7 +1002,7 @@ class Reg_restrict
 			'username' => $u,
 			'group_id' => $g
 		);
-
+		
 		return $this->execute_registration_domain($new_data, $id);
 		
 	}
@@ -1023,7 +1024,9 @@ class Reg_restrict
 	*/
 	function execute_registration_domain_self_validation($member_id)
 	{
-/*
+
+		$this->_debug_log("Self-validation: Member ".$member_id);
+		
 		global $DB, $PREFS;
 
 		// ---------------------------------------------
@@ -1033,34 +1036,29 @@ class Reg_restrict
 		
 		$query = $DB->query(
 			"SELECT * FROM exp_members
-			WHERE member_id = ".$this->this_site_id
+			WHERE member_id = ".$member_id
 			);		
 
 		if ($query->num_rows == 1)
 		{
-		
-			// ---------------------------------------------
-			//	If they've already been moved out of the pending group,
-			//	no need to mess with them.
-			// ---------------------------------------------
 			
 			if ($query->row['group_id'] != 4)
 			{
-				return $member_id;
-			}
-			else
-			{
-				$current_group = $query->row['group_id'];
-				$current_email = $query->row['email'];
+				$this->_debug_log("Self-validation: Caution -- Member ".$member_id." is not in the Pending group!");
+				// return $member_id;
 			}
 			
+			$current_group = $query->row['group_id'];
+			$current_email = $query->row['email'];
+						
 		}
 		else
 		{
+			$this->_debug_log("Self-validation: Member ".$member_id." no longer exists.");
 			return $member_id;
 		}
 		
-		$this->_debug_log("Execution: Self-validation from email: ".$current_email);
+		$this->_debug_log("Self-validation: Supplied email: ".$current_email);
 		
 		$submitted_domain = $this->_get_domain($current_email);
 		
@@ -1077,7 +1075,7 @@ class Reg_restrict
 			{
 				
 				// Woohoo! Match!
-				$this->_debug_log("Execution: Matched domain: ".$submitted_domain);
+				$this->_debug_log("Self-validation: Matched domain: ".$submitted_domain);
 				
 				$destination_group = $query->row['destination_group'];
 				
@@ -1100,26 +1098,25 @@ class Reg_restrict
 						$DB->update_string('exp_members', array('group_id' => $destination_group), $search_param)
 					);
 					
-					$this->_debug_log("Execution: Moving member [".$u."] to group $destination_group. (Code: ".$query->row['domain_string'].")");
+					$this->_debug_log("Self-validation: Moving member ".$member_id." to group ".$destination_group." (Domain: ".$query->row['domain_string'].")");
 					
 				}
 				else
 				{
-					$this->_debug_log("Execution: Member ".$u." is already in group ".$g);
+					$this->_debug_log("Self-validation: Member ".$member_id." is already in group ".$destination_group);
 				}
 				
 			}
 			else
 			{
-				$this->_debug_log("Execution: No match");
+				$this->_debug_log("Self-validation: No match");
 			}
 
 		}
 		else
 		{
-			$this->_debug_log("Execution: No email record to validate");
+			$this->_debug_log("Self-validation: No email record to validate");
 		}
-*/
 		
 		return $member_id;
 		
